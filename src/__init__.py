@@ -14,12 +14,18 @@ bl_info = {
 }
 
 def register():
-    # Will be connected to blender/ adapter layer in Phase 3
-    pass
+    try:
+        from . import blender
+        blender.register()
+    except ImportError:
+        pass
 
 def unregister():
-    # Will be connected to blender/ adapter layer in Phase 3
-    pass
+    try:
+        from . import blender
+        blender.unregister()
+    except ImportError:
+        pass
 
 if __name__ == "__main__":
     register()
