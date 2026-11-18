@@ -20,6 +20,13 @@ class KONGOR_PT_main_panel(bpy.types.Panel):
         col.label(text="Heroes of Newerth K2 Engine Tool", icon="TOOL_SETTINGS")
         col.operator("kongor.inspect_scene", text="Inspect Scene Objects", icon="INFO")
 
+        layout.separator()
+        box = layout.box()
+        box.label(text="Maintenance:", icon="PREFERENCES")
+        row = box.row()
+        row.alert = True
+        row.operator("kongor.uninstall", text="Uninstall Extension", icon="TRASH")
+
 class KONGOR_PT_import_panel(bpy.types.Panel):
     """Import subpanel for K2 Models and Clips"""
     bl_label = "Import K2 Assets"
