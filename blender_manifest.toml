@@ -1,0 +1,26 @@
+schema_version = "1.0.0"
+
+id = "kongor_tool"
+version = "5.0.0"
+name = "KONGOR TOOL"
+tagline = "Heroes of Newerth K2 Engine Model & Animation (.model / .clip) Importer and Exporter"
+maintainer = "KONGOR <kyohot8@gmail.com>"
+type = "add-on"
+
+website = "https://github.com/KRAT0Sz/KONGOR-TOOL"
+
+blender_version_min = "4.2.0"
+
+license = [
+  "SPDX:Apache-2.0",
+]
+
+permissions = [
+  "files",
+]
+
+tags = [
+  "Import-Export",
+  "Game Engine",
+  "Animation",
+]
