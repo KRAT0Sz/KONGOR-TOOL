@@ -5,6 +5,7 @@ Zero N-Panel and zero Viewport clutter.
 """
 
 import bpy
+from .operators import get_target_armatures
 
 class KONGOR_MT_main_menu(bpy.types.Menu):
     """Top header dropdown menu in 3D Viewport"""
@@ -21,12 +22,27 @@ class KONGOR_MT_main_menu(bpy.types.Menu):
         layout.operator("kongor.import_clip", text="Import K2 Clip (.clip)", icon="ANIM")
         layout.operator("kongor.export_clip", text="Export K2 Clip (.clip)", icon="RENDER_ANIMATION")
         layout.separator()
+        layout.operator("kongor.toggle_bones", text="Toggle Bones (Show/Hide)", icon="BONE_DATA")
+        layout.operator("kongor.toggle_bone_names", text="Toggle Bone Names", icon="SYNTAX_ON")
+        layout.operator("kongor.toggle_bone_xray", text="Toggle Bones In Front (X-Ray)", icon="XRAY")
+        layout.separator()
         layout.operator("kongor.inspect_scene", text="Inspect Scene Objects", icon="INFO")
         layout.separator()
         layout.operator("kongor.uninstall", text="Uninstall Extension...", icon="TRASH")
 
 def draw_viewport_header_menu(self, context):
-    self.layout.menu("KONGOR_MT_main_menu")
+    layout = self.layout
+    layout.menu("KONGOR_MT_main_menu")
+
+    target_arms = get_target_armatures(context)
+    bones_vis = any(not a.hide_get() and not a.hide_viewport for a in target_arms) if target_arms else False
+    names_vis = any(a.data.show_names for a in target_arms if a.data) if target_arms else False
+    xray_vis = any(a.show_in_front for a in target_arms) if target_arms else False
+
+    row = layout.row(align=True)
+    row.operator("kongor.toggle_bones", text="", icon="BONE_DATA", depress=bones_vis)
+    row.operator("kongor.toggle_bone_names", text="", icon="SYNTAX_ON", depress=names_vis)
+    row.operator("kongor.toggle_bone_xray", text="", icon="XRAY", depress=xray_vis)
 
 def menu_func_import(self, context):
     self.layout.operator("kongor.import_model", text="Heroes of Newerth Model (.model)")

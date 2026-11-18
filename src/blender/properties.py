@@ -22,6 +22,16 @@ class KongorModelImportSettings(bpy.types.PropertyGroup):
         description="Generate Principled BSDF shader materials from K2 material specifications",
         default=True,
     )
+    bones_in_front: BoolProperty(
+        name="Bones In Front (X-Ray)",
+        description="Display skeleton bones in front of character mesh geometry",
+        default=True,
+    )
+    show_bone_names: BoolProperty(
+        name="Show Bone Names",
+        description="Display bone names next to skeleton joints in 3D Viewport",
+        default=False,
+    )
 
 class KongorModelExportSettings(bpy.types.PropertyGroup):
     flip_v: BoolProperty(

@@ -28,6 +28,8 @@ class KONGOR_OT_import_model(bpy.types.Operator, ImportHelper):
                 self.filepath,
                 flip_v=settings.flip_v,
                 build_materials=settings.build_materials,
+                bones_in_front=getattr(settings, "bones_in_front", True),
+                show_bone_names=getattr(settings, "show_bone_names", False),
             )
             self.report({"INFO"}, f"Successfully imported K2 Model: {os.path.basename(self.filepath)}")
             return {"FINISHED"}
@@ -115,6 +117,121 @@ class KONGOR_OT_export_clip(bpy.types.Operator, ExportHelper):
             self.report({"ERROR"}, f"Failed to export K2 Clip: {str(e)}")
             return {"CANCELLED"}
 
+def get_target_armatures(context):
+    """Find armatures relevant to the current selection or context."""
+    armatures = []
+    # 1. Active object if armature
+    if getattr(context, "active_object", None) and context.active_object.type == "ARMATURE":
+        armatures.append(context.active_object)
+
+    # 2. Selected armatures
+    for obj in getattr(context, "selected_objects", []):
+        if obj.type == "ARMATURE" and obj not in armatures:
+            armatures.append(obj)
+
+    # 3. If active object is a mesh, check parent or armature modifiers
+    if not armatures and getattr(context, "active_object", None) and context.active_object.type == "MESH":
+        parent = context.active_object.parent
+        if parent and parent.type == "ARMATURE" and parent not in armatures:
+            armatures.append(parent)
+        for mod in context.active_object.modifiers:
+            if mod.type == "ARMATURE" and mod.object and mod.object not in armatures:
+                armatures.append(mod.object)
+
+    # 4. Fallback: all armatures in current scene
+    if not armatures and getattr(context, "scene", None):
+        for obj in context.scene.objects:
+            if obj.type == "ARMATURE" and obj not in armatures:
+                armatures.append(obj)
+
+    return armatures
+
+class KONGOR_OT_toggle_bones(bpy.types.Operator):
+    """Toggle visibility of Armature skeleton bones (Show/Hide)"""
+    bl_idname = "kongor.toggle_bones"
+    bl_label = "Toggle Bones"
+    bl_description = "Show or hide skeleton bones in the 3D Viewport"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        armatures = get_target_armatures(context)
+        if armatures:
+            any_hidden = any(arm.hide_get() or arm.hide_viewport for arm in armatures)
+            if any_hidden:
+                for arm in armatures:
+                    arm.hide_viewport = False
+                    arm.hide_set(False)
+                if hasattr(context, "space_data") and getattr(context.space_data, "type", None) == "VIEW_3D":
+                    if hasattr(context.space_data, "overlay") and hasattr(context.space_data.overlay, "show_bones"):
+                        context.space_data.overlay.show_bones = True
+                self.report({"INFO"}, f"Bones: Shown ({len(armatures)} armature(s))")
+            else:
+                for arm in armatures:
+                    arm.hide_viewport = True
+                    arm.hide_set(True)
+                self.report({"INFO"}, f"Bones: Hidden ({len(armatures)} armature(s))")
+            return {"FINISHED"}
+
+        if hasattr(context, "space_data") and getattr(context.space_data, "type", None) == "VIEW_3D":
+            if hasattr(context.space_data, "overlay") and hasattr(context.space_data.overlay, "show_bones"):
+                overlay = context.space_data.overlay
+                overlay.show_bones = not overlay.show_bones
+                state = "Shown" if overlay.show_bones else "Hidden"
+                self.report({"INFO"}, f"Bones Overlay: {state}")
+                return {"FINISHED"}
+
+        self.report({"WARNING"}, "No Armature found in scene.")
+        return {"CANCELLED"}
+
+class KONGOR_OT_toggle_bone_names(bpy.types.Operator):
+    """Toggle display of bone names on Armature skeleton"""
+    bl_idname = "kongor.toggle_bone_names"
+    bl_label = "Toggle Bone Names"
+    bl_description = "Show or hide bone names in the 3D Viewport"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        armatures = get_target_armatures(context)
+        if not armatures:
+            self.report({"WARNING"}, "No Armature found in scene.")
+            return {"CANCELLED"}
+
+        all_showing = all(arm.data.show_names for arm in armatures if arm.data)
+        new_state = not all_showing
+
+        count = 0
+        for arm in armatures:
+            if arm.data:
+                arm.data.show_names = new_state
+                count += 1
+
+        state_str = "Shown" if new_state else "Hidden"
+        self.report({"INFO"}, f"Bone Names: {state_str} ({count} armature(s))")
+        return {"FINISHED"}
+
+class KONGOR_OT_toggle_bone_xray(bpy.types.Operator):
+    """Toggle In Front (X-Ray) display for Armature skeleton"""
+    bl_idname = "kongor.toggle_bone_xray"
+    bl_label = "Toggle Bones In Front"
+    bl_description = "Display skeleton bones in front of meshes (X-Ray mode)"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        armatures = get_target_armatures(context)
+        if not armatures:
+            self.report({"WARNING"}, "No Armature found in scene.")
+            return {"CANCELLED"}
+
+        all_in_front = all(arm.show_in_front for arm in armatures)
+        new_state = not all_in_front
+
+        for arm in armatures:
+            arm.show_in_front = new_state
+
+        state_str = "ON" if new_state else "OFF"
+        self.report({"INFO"}, f"Bones In Front (X-Ray): {state_str} ({len(armatures)} armature(s))")
+        return {"FINISHED"}
+
 class KONGOR_OT_inspect_scene(bpy.types.Operator):
     """Display information and statistics about K2 Engine objects in scene"""
     bl_idname = "kongor.inspect_scene"
@@ -166,11 +283,36 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         settings_exp = context.scene.kongor_export
         col = model_box.column(align=True)
         col.prop(settings_imp, "flip_v")
+        col.prop(settings_imp, "bones_in_front")
+        col.prop(settings_imp, "show_bone_names")
         col.prop(settings_exp, "apply_modifiers")
         col.prop(settings_exp, "export_materials")
         col.prop(settings_exp, "export_mdf")
 
-        # 3. Animation Clip Section
+        # 3. Skeleton & Bones Section
+        rig_box = layout.box()
+        rig_box.label(text="Skeleton & Bones Display:", icon="ARMATURE_DATA")
+        target_arms = get_target_armatures(context)
+
+        bones_vis = any(not a.hide_get() and not a.hide_viewport for a in target_arms) if target_arms else False
+        names_vis = any(a.data.show_names for a in target_arms if a.data) if target_arms else False
+        xray_vis = any(a.show_in_front for a in target_arms) if target_arms else False
+
+        row = rig_box.row(align=True)
+        row.operator("kongor.toggle_bones", text="Toggle Bones", icon="BONE_DATA", depress=bones_vis)
+        row.operator("kongor.toggle_bone_names", text="Toggle Names", icon="SYNTAX_ON", depress=names_vis)
+        row.operator("kongor.toggle_bone_xray", text="In Front (X-Ray)", icon="XRAY", depress=xray_vis)
+
+        if target_arms and target_arms[0].data:
+            arm_obj = target_arms[0]
+            col = rig_box.column(align=True)
+            col.label(text=f"Active Rig: {arm_obj.name}", icon="OUTLINER_OB_ARMATURE")
+            col.prop(arm_obj.data, "show_names", text="Show Bone Names")
+            col.prop(arm_obj, "show_in_front", text="In Front (X-Ray)")
+            col.prop(arm_obj.data, "show_axes", text="Show Bone Axes")
+            col.prop(arm_obj.data, "display_type", text="Display Type")
+
+        # 4. Animation Clip Section
         clip_box = layout.box()
         clip_box.label(text="K2 Animation Clip (.clip / CLIP v2):", icon="ANIM")
         row = clip_box.row(align=True)
@@ -250,6 +392,9 @@ classes = (
     KONGOR_OT_export_model,
     KONGOR_OT_import_clip,
     KONGOR_OT_export_clip,
+    KONGOR_OT_toggle_bones,
+    KONGOR_OT_toggle_bone_names,
+    KONGOR_OT_toggle_bone_xray,
     KONGOR_OT_inspect_scene,
     KONGOR_OT_dialog,
     KONGOR_OT_uninstall,

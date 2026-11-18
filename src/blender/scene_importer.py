@@ -12,7 +12,13 @@ from mathutils import Vector
 from ..core import read_smdl, read_clip, K2ModelData, K2ClipData, Matrix43
 from .texture_manager import build_k2_shader_material
 
-def import_k2_model_file(filepath: str, flip_v: bool = True, build_materials: bool = True) -> bpy.types.Object:
+def import_k2_model_file(
+    filepath: str,
+    flip_v: bool = True,
+    build_materials: bool = True,
+    bones_in_front: bool = True,
+    show_bone_names: bool = False,
+) -> bpy.types.Object:
     """Reads a K2 .model file into Blender scene objects."""
     with open(filepath, "rb") as stream:
         model = read_smdl(stream)
@@ -26,7 +32,9 @@ def import_k2_model_file(filepath: str, flip_v: bool = True, build_materials: bo
     # 1. Armature & Skeleton Construction
     if model.bones:
         armature_data = bpy.data.armatures.new(name=f"{model_name}_Skeleton")
+        armature_data.show_names = show_bone_names
         armature_obj = bpy.data.objects.new(name=f"{model_name}_Skeleton", object_data=armature_data)
+        armature_obj.show_in_front = bones_in_front
         bpy.context.collection.objects.link(armature_obj)
 
         bpy.context.view_layer.objects.active = armature_obj
