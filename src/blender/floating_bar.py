@@ -34,14 +34,13 @@ class KONGOR_OT_floating_bar(bpy.types.Operator):
     bl_label = "KONGOR Floating Navbar"
     bl_options = {"INTERNAL"}
 
-    def __init__(self):
-        self._handle = None
-        self.hovered_index = -1
-        self.bar_x = 0
-        self.bar_y = 20
-        self.bar_width = 0
-        self.bar_height = 34
-        self.button_rects = []
+    _handle = None
+    hovered_index = -1
+    bar_x = 0
+    bar_y = 20
+    bar_width = 0
+    bar_height = 34
+    button_rects = []
 
     def get_button_layout(self, region_width):
         padding = 5
@@ -171,6 +170,14 @@ class KONGOR_OT_floating_bar(bpy.types.Operator):
             old_inst.cancel(context)
             self.report({"INFO"}, "Floating navbar hidden.")
             return {"CANCELLED"}
+
+        self._handle = None
+        self.hovered_index = -1
+        self.bar_x = 0
+        self.bar_y = 20
+        self.bar_width = 0
+        self.bar_height = 34
+        self.button_rects = []
 
         _instance = self
         self._handle = bpy.types.SpaceView3D.draw_handler_add(
