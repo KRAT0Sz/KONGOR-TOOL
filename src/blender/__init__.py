@@ -1,6 +1,6 @@
 """
 Blender Adapter Package for KONGOR TOOL.
-Registers PropertyGroups, Operators, and UI Panels.
+Registers PropertyGroups, Operators, and UI Menus.
 """
 
 from . import properties
