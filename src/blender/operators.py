@@ -133,6 +133,73 @@ class KONGOR_OT_inspect_scene(bpy.types.Operator):
         self.report({"INFO"}, msg)
         return {"FINISHED"}
 
+class KONGOR_OT_dialog(bpy.types.Operator):
+    """Open floating dialog window for KONGOR TOOL"""
+    bl_idname = "kongor.dialog"
+    bl_label = "KONGOR TOOL (v5.0.0)"
+    bl_description = "Open independent floating control window for KONGOR TOOL"
+    bl_options = {"REGISTER"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=440)
+
+    def execute(self, context):
+        return {"FINISHED"}
+
+    def draw(self, context):
+        layout = self.layout
+
+        # 1. Header Box
+        header_box = layout.box()
+        col = header_box.column(align=True)
+        col.label(text="Heroes of Newerth K2 Engine Pipeline", icon="TOOL_SETTINGS")
+        col.operator("kongor.inspect_scene", text="Inspect Scene Objects", icon="INFO")
+
+        # 2. Model Section
+        model_box = layout.box()
+        model_box.label(text="K2 Model (.model / SMDL v3):", icon="OBJECT_DATA")
+        row = model_box.row(align=True)
+        row.operator("kongor.import_model", text="Import Model", icon="IMPORT")
+        row.operator("kongor.export_model", text="Export Model", icon="EXPORT")
+
+        settings_imp = context.scene.kongor_import
+        settings_exp = context.scene.kongor_export
+        col = model_box.column(align=True)
+        col.prop(settings_imp, "flip_v")
+        col.prop(settings_exp, "apply_modifiers")
+        col.prop(settings_exp, "export_materials")
+        col.prop(settings_exp, "export_mdf")
+
+        # 3. Animation Clip Section
+        clip_box = layout.box()
+        clip_box.label(text="K2 Animation Clip (.clip / CLIP v2):", icon="ANIM")
+        row = clip_box.row(align=True)
+        row.operator("kongor.import_clip", text="Import Clip", icon="IMPORT")
+        row.operator("kongor.export_clip", text="Export Clip", icon="EXPORT")
+
+        settings_clip = context.scene.kongor_clip
+        col = clip_box.column(align=True)
+        row = col.row(align=True)
+        row.prop(settings_clip, "frame_start")
+        row.prop(settings_clip, "frame_end")
+        col.prop(settings_clip, "fps")
+
+        # 4. Active Mesh Object Properties
+        if context.active_object and context.active_object.type == "MESH":
+            obj_box = layout.box()
+            obj_box.label(text=f"Active Mesh: {context.active_object.name}", icon="MESH_DATA")
+            settings_obj = context.active_object.kongor
+            obj_box.prop(settings_obj, "is_collision_surface")
+            if not settings_obj.is_collision_surface:
+                obj_box.prop(settings_obj, "bonelink")
+
+        # 5. Maintenance / Uninstall
+        maint_box = layout.box()
+        maint_box.label(text="Maintenance:", icon="PREFERENCES")
+        row = maint_box.row()
+        row.alert = True
+        row.operator("kongor.uninstall", text="Uninstall Extension", icon="TRASH")
+
 class KONGOR_OT_uninstall(bpy.types.Operator):
     """Uninstall KONGOR TOOL extension and remove files from Blender"""
     bl_idname = "kongor.uninstall"
@@ -184,6 +251,7 @@ classes = (
     KONGOR_OT_import_clip,
     KONGOR_OT_export_clip,
     KONGOR_OT_inspect_scene,
+    KONGOR_OT_dialog,
     KONGOR_OT_uninstall,
 )
 
