@@ -7,9 +7,9 @@ import math
 import os
 from typing import Dict, List, Optional
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Vector, Quaternion
 
-from ..core import read_smdl, read_clip, K2ModelData, K2ClipData, Matrix43
+from ..core import read_smdl, read_clip, K2ModelData, K2ClipData, Matrix43, euler_yxz_to_quat
 from .texture_manager import build_k2_shader_material
 
 def import_k2_model_file(
@@ -187,8 +187,33 @@ def import_k2_model_file(
 
     return armature_obj or (mesh_obj if model.meshes else None)
 
+def _get_or_create_fcurve(
+    action: bpy.types.Action,
+    datablock: bpy.types.ID,
+    data_path: str,
+    index: int,
+    group_name: str = "",
+) -> bpy.types.FCurve:
+    """Creates or ensures an FCurve in both modern Blender 5.0+ (Slotted Actions) and legacy Blender 4.x."""
+    if hasattr(action, "fcurve_ensure_for_datablock"):
+        return action.fcurve_ensure_for_datablock(datablock, data_path, index=index, group_name=group_name)
+    elif hasattr(action, "fcurves"):
+        fc = action.fcurves.find(data_path=data_path, index=index)
+        if fc is None:
+            fc = action.fcurves.new(data_path=data_path, index=index, action_group=group_name)
+        return fc
+    else:
+        layer = action.layers[0] if action.layers else action.layers.new(name="Layer")
+        strip = layer.strips[0] if layer.strips else layer.strips.new(type="KEYFRAME")
+        slot = action.slots[0] if action.slots else action.slots.new(target_id_type="OBJECT")
+        cb = strip.channelbag(slot)
+        fc = cb.fcurves.find(data_path=data_path, index=index)
+        if fc is None:
+            fc = cb.fcurves.new(data_path=data_path, index=index)
+        return fc
+
 def import_k2_clip_file(filepath: str, armature_obj: bpy.types.Object) -> Optional[bpy.types.Action]:
-    """Reads a K2 .clip file into a Blender Action assigned to the specified armature."""
+    """Reads a K2 .clip file into a Blender Action with exact relative-to-rest pose transformations."""
     if not armature_obj or armature_obj.type != "ARMATURE":
         raise ValueError("An active Armature object is required to import animation clips.")
 
@@ -202,41 +227,112 @@ def import_k2_clip_file(filepath: str, armature_obj: bpy.types.Object) -> Option
         armature_obj.animation_data_create()
     armature_obj.animation_data.action = action
 
+    arm_bones = armature_obj.data.bones
+    num_frames = clip.header.num_frames
+
+    # Precompute B_rel_rest inverse for each bone to transform from parent-space to pose bone matrix_basis
+    inv_rel_rest_map: Dict[str, Matrix] = {}
+    for b in arm_bones:
+        if b.parent:
+            b_rel_rest = b.parent.matrix_local.inverted() @ b.matrix_local
+        else:
+            b_rel_rest = b.matrix_local.copy()
+        inv_rel_rest_map[b.name] = b_rel_rest.inverted()
+
     for motion in clip.motions:
         bone_name = motion.bone_name
+        if bone_name not in arm_bones:
+            continue
+
+        inv_b_rel = inv_rel_rest_map[bone_name]
+
+        # Map channel key types: 0,1,2 = pos, 3,4,5 = pitch,roll,yaw, 7,8,9 = scale
+        ch_map = {ch.key_type: ch.float_keys for ch in motion.channels}
+        kx = ch_map.get(0, [0.0])
+        ky = ch_map.get(1, [0.0])
+        kz = ch_map.get(2, [0.0])
+        k_pitch = ch_map.get(3, [0.0])
+        k_roll = ch_map.get(4, [0.0])
+        k_yaw = ch_map.get(5, [0.0])
+        k_sx = ch_map.get(7, [1.0])
+        k_sy = ch_map.get(8, [1.0])
+        k_sz = ch_map.get(9, [1.0])
+
+        len_x = len(kx)
+        len_y = len(ky)
+        len_z = len(kz)
+        len_p = len(k_pitch)
+        len_r = len(k_roll)
+        len_yw = len(k_yaw)
+        len_sx = len(k_sx)
+        len_sy = len(k_sy)
+        len_sz = len(k_sz)
+
+        pb = armature_obj.pose.bones.get(bone_name)
+        if pb:
+            pb.rotation_mode = "QUATERNION"
+
+        loc_keys: List[List[float]] = [[], [], []]
+        rot_keys: List[List[float]] = [[], [], [], []]
+        scale_keys: List[List[float]] = [[], [], []]
+
+        for f in range(num_frames):
+            pos = (kx[f % len_x], ky[f % len_y], kz[f % len_z])
+            pitch = k_pitch[f % len_p]
+            roll = k_roll[f % len_r]
+            yaw = k_yaw[f % len_yw]
+            sx = k_sx[f % len_sx]
+            sy = k_sy[f % len_sy]
+            sz = k_sz[f % len_sz]
+
+            qx, qy, qz, qw = euler_yxz_to_quat(pitch, roll, yaw)
+            quat_k2 = Quaternion((qw, qx, qy, qz))
+
+            T = Matrix.Translation(Vector(pos))
+            R = quat_k2.to_matrix().to_4x4()
+            S = Matrix.Diagonal(Vector((sx, sy, sz, 1.0)))
+            M_k2 = T @ R @ S
+
+            # matrix_basis = inv(B_rel_rest) * M_k2
+            matrix_basis = inv_b_rel @ M_k2
+            b_loc, b_rot, b_scale = matrix_basis.decompose()
+
+            frame_num = float(f + 1)
+            loc_keys[0].extend([frame_num, b_loc.x])
+            loc_keys[1].extend([frame_num, b_loc.y])
+            loc_keys[2].extend([frame_num, b_loc.z])
+
+            rot_keys[0].extend([frame_num, b_rot.w])
+            rot_keys[1].extend([frame_num, b_rot.x])
+            rot_keys[2].extend([frame_num, b_rot.y])
+            rot_keys[3].extend([frame_num, b_rot.z])
+
+            scale_keys[0].extend([frame_num, b_scale.x])
+            scale_keys[1].extend([frame_num, b_scale.y])
+            scale_keys[2].extend([frame_num, b_scale.z])
+
         path_loc = f'pose.bones["{bone_name}"].location'
-        path_rot = f'pose.bones["{bone_name}"].rotation_euler'
+        path_rot = f'pose.bones["{bone_name}"].rotation_quaternion'
         path_scale = f'pose.bones["{bone_name}"].scale'
 
-        for channel in motion.channels:
-            kt = channel.key_type
-            keys = channel.float_keys
+        for i in range(3):
+            fc = _get_or_create_fcurve(action, armature_obj, path_loc, i, group_name=bone_name)
+            fc.keyframe_points.add(num_frames)
+            fc.keyframe_points.foreach_set("co", loc_keys[i])
+            fc.update()
 
-            if kt in (0, 1, 2):
-                fc = action.fcurves.new(data_path=path_loc, index=kt)
-                if len(keys) == 1:
-                    fc.keyframe_points.insert(1, keys[0])
-                else:
-                    for idx, val in enumerate(keys):
-                        fc.keyframe_points.insert(idx + 1, val)
+        for i in range(4):
+            fc = _get_or_create_fcurve(action, armature_obj, path_rot, i, group_name=bone_name)
+            fc.keyframe_points.add(num_frames)
+            fc.keyframe_points.foreach_set("co", rot_keys[i])
+            fc.update()
 
-            elif kt in (3, 4, 5):
-                axis_idx = 0 if kt == 3 else (1 if kt == 4 else 2)
-                fc = action.fcurves.new(data_path=path_rot, index=axis_idx)
-                if len(keys) == 1:
-                    fc.keyframe_points.insert(1, math.radians(keys[0]))
-                else:
-                    for idx, val in enumerate(keys):
-                        fc.keyframe_points.insert(idx + 1, math.radians(val))
-
-            elif kt in (7, 8, 9):
-                fc = action.fcurves.new(data_path=path_scale, index=kt - 7)
-                if len(keys) == 1:
-                    fc.keyframe_points.insert(1, keys[0])
-                else:
-                    for idx, val in enumerate(keys):
-                        fc.keyframe_points.insert(idx + 1, val)
+        for i in range(3):
+            fc = _get_or_create_fcurve(action, armature_obj, path_scale, i, group_name=bone_name)
+            fc.keyframe_points.add(num_frames)
+            fc.keyframe_points.foreach_set("co", scale_keys[i])
+            fc.update()
 
     bpy.context.scene.frame_start = 1
-    bpy.context.scene.frame_end = clip.header.num_frames
+    bpy.context.scene.frame_end = num_frames
     return action
