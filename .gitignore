@@ -8,3 +8,4 @@ __pycache__/
 development_plan/
 uv.lock
 dist/
+tests/wasteland_twitch/
