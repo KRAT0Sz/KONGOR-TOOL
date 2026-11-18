@@ -1,12 +1,15 @@
 """
-Blender 3D Viewport N-Panel and Topbar File Menu integrations for KONGOR TOOL.
+KONGOR TOOL - Modern Blender UI Panels
+Professional 3D Viewport Sidebar N-Panel and File Menu integrations.
+Designed for Blender >= 4.2 / 5.0 with zero legacy structure.
 """
 
 import bpy
 
-class K2_PT_MainPanel(bpy.types.Panel):
+class KONGOR_PT_main_panel(bpy.types.Panel):
+    """Primary N-Panel in 3D Viewport for KONGOR TOOL"""
     bl_label = "KONGOR TOOL (v5.0.0)"
-    bl_idname = "K2_PT_MainPanel"
+    bl_idname = "KONGOR_PT_main_panel"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "KONGOR Tool"
@@ -14,74 +17,85 @@ class K2_PT_MainPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        col.label(text="K2 Engine Clean Architecture Tool", icon="TOOL_SETTINGS")
-        col.operator("k2.scene_info", text="Scene Info", icon="INFO")
+        col.label(text="Heroes of Newerth K2 Engine Tool", icon="TOOL_SETTINGS")
+        col.operator("kongor.inspect_scene", text="Inspect Scene Objects", icon="INFO")
 
-class K2_PT_ImportPanel(bpy.types.Panel):
-    bl_label = "Import (.model / .clip)"
-    bl_idname = "K2_PT_ImportPanel"
+class KONGOR_PT_import_panel(bpy.types.Panel):
+    """Import subpanel for K2 Models and Clips"""
+    bl_label = "Import K2 Assets"
+    bl_idname = "KONGOR_PT_import_panel"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "KONGOR Tool"
-    bl_parent_id = "K2_PT_MainPanel"
+    bl_parent_id = "KONGOR_PT_main_panel"
 
     def draw(self, context):
         layout = self.layout
-        settings = context.scene.k2_import_settings
+        settings = context.scene.kongor_import
 
         row = layout.row(align=True)
-        row.operator("import_mesh.k2", text="Import Model", icon="IMPORT")
-        row.operator("import_clip.k2", text="Import Clip", icon="ANIM")
-
-        layout.separator()
-        layout.prop(settings, "flip_uv")
-        layout.prop(settings, "import_materials")
-        layout.prop(settings, "import_textures")
-
-        if settings.import_textures:
-            box = layout.box()
-            box.label(text="Texture Channels:")
-            col = box.column(align=True)
-            col.prop(settings, "tex_color")
-            col.prop(settings, "tex_normal")
-            col.prop(settings, "tex_mrao")
-            col.prop(settings, "tex_emissive")
-
-class K2_PT_ExportPanel(bpy.types.Panel):
-    bl_label = "Export (.model / .clip)"
-    bl_idname = "K2_PT_ExportPanel"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "KONGOR Tool"
-    bl_parent_id = "K2_PT_MainPanel"
-
-    def draw(self, context):
-        layout = self.layout
-        settings = context.scene.k2_export_settings
-
-        layout.label(text="Export Mode:")
-        layout.prop(settings, "export_mode", expand=True)
+        row.operator("kongor.import_model", text="Import Model", icon="IMPORT")
+        row.operator("kongor.import_clip", text="Import Clip", icon="ANIM")
 
         box = layout.box()
-        box.label(text="Options:")
+        box.label(text="Import Options:")
         col = box.column(align=True)
-        col.prop(settings, "force_static")
-        col.prop(settings, "remove_hierarchy")
-        col.prop(settings, "export_geometry")
-        col.prop(settings, "export_materials")
-        col.prop(settings, "export_model_def")
+        col.prop(settings, "flip_v")
+        col.prop(settings, "build_materials")
 
-        layout.separator()
-        row = layout.row(align=True)
-        row.operator("export_mesh.k2", text="Export Model", icon="EXPORT")
-
-class K2_PT_MeshSettingsPanel(bpy.types.Panel):
-    bl_label = "K2 Mesh & Collision Settings"
-    bl_idname = "K2_PT_MeshSettingsPanel"
+class KONGOR_PT_export_model_panel(bpy.types.Panel):
+    """Export subpanel for K2 Models"""
+    bl_label = "Export K2 Model"
+    bl_idname = "KONGOR_PT_export_model_panel"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "KONGOR Tool"
-    bl_parent_id = "K2_PT_MainPanel"
+    bl_parent_id = "KONGOR_PT_main_panel"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.kongor_export
+
+        layout.operator("kongor.export_model", text="Export .model", icon="EXPORT")
+
+        box = layout.box()
+        box.label(text="Model Export Options:")
+        col = box.column(align=True)
+        col.prop(settings, "flip_v")
+        col.prop(settings, "apply_modifiers")
+        col.prop(settings, "export_materials")
+        col.prop(settings, "export_mdf")
+
+class KONGOR_PT_export_clip_panel(bpy.types.Panel):
+    """Export subpanel for K2 Animation Clips"""
+    bl_label = "Export K2 Clip"
+    bl_idname = "KONGOR_PT_export_clip_panel"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "KONGOR Tool"
+    bl_parent_id = "KONGOR_PT_main_panel"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.kongor_clip
+
+        layout.operator("kongor.export_clip", text="Export .clip", icon="RENDER_ANIMATION")
+
+        box = layout.box()
+        box.label(text="Clip Animation Options:")
+        col = box.column(align=True)
+        col.prop(settings, "frame_start")
+        col.prop(settings, "frame_end")
+        col.prop(settings, "fps")
+
+class KONGOR_PT_object_panel(bpy.types.Panel):
+    """Per-object K2 Settings (Collision Surface, Rigid Bone Link)"""
+    bl_label = "Active Object K2 Properties"
+    bl_idname = "KONGOR_PT_object_panel"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "KONGOR Tool"
+    bl_parent_id = "KONGOR_PT_main_panel"
 
     @classmethod
     def poll(cls, context):
@@ -90,24 +104,27 @@ class K2_PT_MeshSettingsPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         obj = context.active_object
-        settings = obj.k2_mesh_settings
+        settings = obj.kongor
 
-        layout.prop(settings, "is_collision_surface")
+        box = layout.box()
+        box.prop(settings, "is_collision_surface")
         if not settings.is_collision_surface:
-            layout.prop(settings, "bonelink")
+            box.prop(settings, "bonelink")
 
 def menu_func_import(self, context):
-    self.layout.operator("import_mesh.k2", text="K2 Model (.model)")
-    self.layout.operator("import_clip.k2", text="K2 Clip (.clip)")
+    self.layout.operator("kongor.import_model", text="Heroes of Newerth Model (.model)")
+    self.layout.operator("kongor.import_clip", text="Heroes of Newerth Clip (.clip)")
 
 def menu_func_export(self, context):
-    self.layout.operator("export_mesh.k2", text="K2 Model (.model)")
+    self.layout.operator("kongor.export_model", text="Heroes of Newerth Model (.model)")
+    self.layout.operator("kongor.export_clip", text="Heroes of Newerth Clip (.clip)")
 
 classes = (
-    K2_PT_MainPanel,
-    K2_PT_ImportPanel,
-    K2_PT_ExportPanel,
-    K2_PT_MeshSettingsPanel,
+    KONGOR_PT_main_panel,
+    KONGOR_PT_import_panel,
+    KONGOR_PT_export_model_panel,
+    KONGOR_PT_export_clip_panel,
+    KONGOR_PT_object_panel,
 )
 
 def register():

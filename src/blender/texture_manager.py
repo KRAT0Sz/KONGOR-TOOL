@@ -1,51 +1,51 @@
 """
-Texture and Shader Material Manager for KONGOR TOOL.
-Constructs Principled BSDF Shader Node trees for K2 Engine assets.
+KONGOR TOOL - Material & Shader Node Builder
+Follows official K2 Engine material samplers (c_material.h and c_outmaterial.cpp:86-97).
+Maps: diffuse, normalmap, specular, gloss, lightmap, occlusion, cube.
 """
 
 import os
 from typing import Optional, Dict
 import bpy
 
-TEXTURE_SUFFIXES = {
-    "color": ["_color", "_albedo", "_diffuse", "_d", "_c"],
-    "normal": ["_norm", "_normal", "_n", "_bump"],
-    "mrao": ["_mrao", "_spec", "_s", "_roughness", "_metallic"],
-    "emissive": ["_glow", "_emissive", "_e", "_illum"],
+# Official K2 Engine map samplers and their standard filename suffixes
+K2_SAMPLER_PATTERNS: Dict[str, list[str]] = {
+    "diffuse": ["_color", "_diffuse", "_d", "_albedo"],
+    "normalmap": ["_norm", "_normal", "_n", "_bump"],
+    "specular": ["_spec", "_s", "_specular"],
+    "gloss": ["_gloss", "_roughness"],
+    "lightmap": ["_lightmap", "_si"],
+    "occlusion": ["_occlusion", "_ao"],
 }
 
-IMAGE_EXTENSIONS = [".dds", ".tga", ".png", ".jpg", ".jpeg"]
+SUPPORTED_EXTENSIONS = [".dds", ".tga", ".png", ".jpg", ".jpeg"]
 
-def find_texture_file(base_dir: str, base_name: str, tex_type: str) -> Optional[str]:
-    """Searches base_dir for a texture matching base_name and tex_type suffixes."""
-    suffixes = TEXTURE_SUFFIXES.get(tex_type, [f"_{tex_type}"])
+def locate_sampler_texture(base_dir: str, stem: str, sampler_type: str) -> Optional[str]:
+    """Finds texture files in base_dir corresponding to official K2 sampler types."""
+    patterns = K2_SAMPLER_PATTERNS.get(sampler_type, [f"_{sampler_type}"])
     
-    # Check directly by base_name + suffix + extension
-    for suffix in suffixes:
-        for ext in IMAGE_EXTENSIONS:
-            filename = f"{base_name}{suffix}{ext}"
-            path = os.path.join(base_dir, filename)
-            if os.path.exists(path):
-                return path
+    for pat in patterns:
+        for ext in SUPPORTED_EXTENSIONS:
+            target = os.path.join(base_dir, f"{stem}{pat}{ext}")
+            if os.path.exists(target):
+                return target
 
-    # Search directory files case-insensitively
+    # Case-insensitive fallback
     if os.path.isdir(base_dir):
-        files_lower = {f.lower(): f for f in os.listdir(base_dir)}
-        for suffix in suffixes:
-            for ext in IMAGE_EXTENSIONS:
-                candidate = f"{base_name}{suffix}{ext}".lower()
-                if candidate in files_lower:
-                    return os.path.join(base_dir, files_lower[candidate])
-
+        disk_files = {f.lower(): f for f in os.listdir(base_dir)}
+        for pat in patterns:
+            for ext in SUPPORTED_EXTENSIONS:
+                candidate = f"{stem}{pat}{ext}".lower()
+                if candidate in disk_files:
+                    return os.path.join(base_dir, disk_files[candidate])
     return None
 
-def create_k2_material(
+def build_k2_shader_material(
     material_name: str,
     base_dir: str,
-    settings,
     shader_path: str = ""
 ) -> bpy.types.Material:
-    """Creates a Principled BSDF material in Blender configured for K2 Engine PBR shaders."""
+    """Builds a modern Blender Principled BSDF node setup reflecting K2 Engine samplers."""
     mat = bpy.data.materials.get(material_name)
     if mat is None:
         mat = bpy.data.materials.new(name=material_name)
@@ -55,54 +55,53 @@ def create_k2_material(
     links = mat.node_tree.links
     nodes.clear()
 
-    # Create Core Nodes
+    # Output node
     output_node = nodes.new(type="ShaderNodeOutputMaterial")
     output_node.location = (400, 0)
 
+    # Principled BSDF
     principled = nodes.new(type="ShaderNodeBsdfPrincipled")
     principled.location = (0, 0)
     links.new(principled.outputs["BSDF"], output_node.inputs["Surface"])
 
-    clean_base_name = os.path.splitext(material_name)[0]
+    stem = os.path.splitext(material_name)[0]
 
-    # 1. Color / Diffuse Texture
-    if getattr(settings, "tex_color", True):
-        color_path = find_texture_file(base_dir, clean_base_name, "color")
-        if color_path:
-            img = bpy.data.images.load(color_path, check_existing=True)
-            tex_node = nodes.new(type="ShaderNodeTexImage")
-            tex_node.location = (-400, 200)
-            tex_node.image = img
-            links.new(tex_node.outputs["Color"], principled.inputs["Base Color"])
-            if "Alpha" in tex_node.outputs and "Alpha" in principled.inputs:
-                links.new(tex_node.outputs["Alpha"], principled.inputs["Alpha"])
+    # 1. Diffuse Sampler
+    diffuse_path = locate_sampler_texture(base_dir, stem, "diffuse")
+    if diffuse_path:
+        img = bpy.data.images.load(diffuse_path, check_existing=True)
+        tex_node = nodes.new(type="ShaderNodeTexImage")
+        tex_node.location = (-400, 200)
+        tex_node.image = img
+        links.new(tex_node.outputs["Color"], principled.inputs["Base Color"])
+        if "Alpha" in tex_node.outputs and "Alpha" in principled.inputs:
+            links.new(tex_node.outputs["Alpha"], principled.inputs["Alpha"])
 
-    # 2. Normal Map Texture
-    if getattr(settings, "tex_normal", True):
-        norm_path = find_texture_file(base_dir, clean_base_name, "normal")
-        if norm_path:
-            img = bpy.data.images.load(norm_path, check_existing=True)
-            img.colorspace_settings.name = "Non-Color"
-            norm_tex_node = nodes.new(type="ShaderNodeTexImage")
-            norm_tex_node.location = (-400, -100)
-            norm_tex_node.image = img
+    # 2. Normalmap Sampler
+    normal_path = locate_sampler_texture(base_dir, stem, "normalmap")
+    if normal_path:
+        img = bpy.data.images.load(normal_path, check_existing=True)
+        img.colorspace_settings.name = "Non-Color"
+        tex_node = nodes.new(type="ShaderNodeTexImage")
+        tex_node.location = (-400, -100)
+        tex_node.image = img
 
-            normal_map_node = nodes.new(type="ShaderNodeNormalMap")
-            normal_map_node.location = (-150, -100)
-            links.new(norm_tex_node.outputs["Color"], normal_map_node.inputs["Color"])
-            links.new(normal_map_node.outputs["Normal"], principled.inputs["Normal"])
+        norm_map = nodes.new(type="ShaderNodeNormalMap")
+        norm_map.location = (-150, -100)
+        links.new(tex_node.outputs["Color"], norm_map.inputs["Color"])
+        links.new(norm_map.outputs["Normal"], principled.inputs["Normal"])
 
-    # 3. Emissive / Glow Texture
-    if getattr(settings, "tex_emissive", True):
-        glow_path = find_texture_file(base_dir, clean_base_name, "emissive")
-        if glow_path:
-            img = bpy.data.images.load(glow_path, check_existing=True)
-            glow_tex_node = nodes.new(type="ShaderNodeTexImage")
-            glow_tex_node.location = (-400, -400)
-            glow_tex_node.image = img
-            if "Emission Color" in principled.inputs:
-                links.new(glow_tex_node.outputs["Color"], principled.inputs["Emission Color"])
-            elif "Emission" in principled.inputs:
-                links.new(glow_tex_node.outputs["Color"], principled.inputs["Emission"])
+    # 3. Specular Sampler
+    spec_path = locate_sampler_texture(base_dir, stem, "specular")
+    if spec_path:
+        img = bpy.data.images.load(spec_path, check_existing=True)
+        img.colorspace_settings.name = "Non-Color"
+        tex_node = nodes.new(type="ShaderNodeTexImage")
+        tex_node.location = (-400, -350)
+        tex_node.image = img
+        if "Specular IOR Level" in principled.inputs:
+            links.new(tex_node.outputs["Color"], principled.inputs["Specular IOR Level"])
+        elif "Specular" in principled.inputs:
+            links.new(tex_node.outputs["Color"], principled.inputs["Specular"])
 
     return mat

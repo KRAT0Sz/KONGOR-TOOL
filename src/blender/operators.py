@@ -1,6 +1,7 @@
 """
-Blender Operators for KONGOR TOOL.
-Handles File dialogs, invocation, and execution of Import/Export tasks.
+KONGOR TOOL - Modern Blender Operators
+Clean operator definitions conforming to Blender >= 4.2 / 5.0 standards.
+Zero legacy code or legacy naming conventions.
 """
 
 import os
@@ -8,12 +9,12 @@ import bpy
 from bpy.props import StringProperty
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 
-from .scene_importer import import_k2_model_to_scene, import_k2_clip_to_scene
-from .scene_exporter import export_scene_to_k2_model
+from .scene_importer import import_k2_model_file, import_k2_clip_file
+from .scene_exporter import export_k2_model_file, export_k2_clip_file
 
-class IMPORT_OT_k2_model(bpy.types.Operator, ImportHelper):
-    """Import K2 Engine Model (.model)"""
-    bl_idname = "import_mesh.k2"
+class KONGOR_OT_import_model(bpy.types.Operator, ImportHelper):
+    """Import K2 Engine Model (.model / SMDL)"""
+    bl_idname = "kongor.import_model"
     bl_label = "Import K2 Model"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -21,18 +22,22 @@ class IMPORT_OT_k2_model(bpy.types.Operator, ImportHelper):
     filter_glob: StringProperty(default="*.model", options={"HIDDEN"})
 
     def execute(self, context):
-        settings = context.scene.k2_import_settings
+        settings = context.scene.kongor_import
         try:
-            import_k2_model_to_scene(self.filepath, settings)
-            self.report({"INFO"}, f"Successfully imported: {os.path.basename(self.filepath)}")
+            import_k2_model_file(
+                self.filepath,
+                flip_v=settings.flip_v,
+                build_materials=settings.build_materials,
+            )
+            self.report({"INFO"}, f"Successfully imported K2 Model: {os.path.basename(self.filepath)}")
             return {"FINISHED"}
         except Exception as e:
-            self.report({"ERROR"}, f"Import error: {str(e)}")
+            self.report({"ERROR"}, f"Failed to import K2 Model: {str(e)}")
             return {"CANCELLED"}
 
-class EXPORT_OT_k2_model(bpy.types.Operator, ExportHelper):
-    """Export K2 Engine Model (.model)"""
-    bl_idname = "export_mesh.k2"
+class KONGOR_OT_export_model(bpy.types.Operator, ExportHelper):
+    """Export scene to K2 Engine Model (.model / SMDL v3)"""
+    bl_idname = "kongor.export_model"
     bl_label = "Export K2 Model"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -40,9 +45,9 @@ class EXPORT_OT_k2_model(bpy.types.Operator, ExportHelper):
     filter_glob: StringProperty(default="*.model", options={"HIDDEN"})
 
     def execute(self, context):
-        settings = context.scene.k2_export_settings
+        settings = context.scene.kongor_export
         try:
-            success, msg = export_scene_to_k2_model(self.filepath, settings)
+            success, msg = export_k2_model_file(self.filepath, context, settings)
             if success:
                 self.report({"INFO"}, msg)
                 return {"FINISHED"}
@@ -50,12 +55,12 @@ class EXPORT_OT_k2_model(bpy.types.Operator, ExportHelper):
                 self.report({"ERROR"}, msg)
                 return {"CANCELLED"}
         except Exception as e:
-            self.report({"ERROR"}, f"Export error: {str(e)}")
+            self.report({"ERROR"}, f"Failed to export K2 Model: {str(e)}")
             return {"CANCELLED"}
 
-class IMPORT_OT_k2_clip(bpy.types.Operator, ImportHelper):
-    """Import K2 Engine Animation Clip (.clip)"""
-    bl_idname = "import_clip.k2"
+class KONGOR_OT_import_clip(bpy.types.Operator, ImportHelper):
+    """Import K2 Engine Animation Clip (.clip) onto active Armature"""
+    bl_idname = "kongor.import_clip"
     bl_label = "Import K2 Clip"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -65,39 +70,75 @@ class IMPORT_OT_k2_clip(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         armature = context.active_object
         if not armature or armature.type != "ARMATURE":
-            self.report({"ERROR"}, "Please select an active Armature before importing a .clip file.")
+            self.report({"ERROR"}, "Please select an active Armature object before importing a .clip file.")
             return {"CANCELLED"}
 
         try:
-            import_k2_clip_to_scene(self.filepath, armature)
-            self.report({"INFO"}, f"Successfully imported clip: {os.path.basename(self.filepath)}")
+            import_k2_clip_file(self.filepath, armature)
+            self.report({"INFO"}, f"Successfully imported K2 Clip: {os.path.basename(self.filepath)}")
             return {"FINISHED"}
         except Exception as e:
-            self.report({"ERROR"}, f"Clip import error: {str(e)}")
+            self.report({"ERROR"}, f"Failed to import K2 Clip: {str(e)}")
             return {"CANCELLED"}
 
-class K2_OT_scene_info(bpy.types.Operator):
-    """Display information about active K2 scene objects"""
-    bl_idname = "k2.scene_info"
-    bl_label = "Scene Info"
+class KONGOR_OT_export_clip(bpy.types.Operator, ExportHelper):
+    """Export Armature animation to K2 Engine Clip (.clip)"""
+    bl_idname = "kongor.export_clip"
+    bl_label = "Export K2 Clip"
+    bl_options = {"REGISTER", "UNDO"}
+
+    filename_ext = ".clip"
+    filter_glob: StringProperty(default="*.clip", options={"HIDDEN"})
+
+    def execute(self, context):
+        armature = context.active_object
+        if not armature or armature.type != "ARMATURE":
+            for obj in context.scene.objects:
+                if obj.type == "ARMATURE" and not obj.hide_get():
+                    armature = obj
+                    break
+
+        if not armature or armature.type != "ARMATURE":
+            self.report({"ERROR"}, "An active Armature object is required to export a .clip file.")
+            return {"CANCELLED"}
+
+        settings = context.scene.kongor_clip
+        try:
+            success, msg = export_k2_clip_file(self.filepath, context, armature, settings)
+            if success:
+                self.report({"INFO"}, msg)
+                return {"FINISHED"}
+            else:
+                self.report({"ERROR"}, msg)
+                return {"CANCELLED"}
+        except Exception as e:
+            self.report({"ERROR"}, f"Failed to export K2 Clip: {str(e)}")
+            return {"CANCELLED"}
+
+class KONGOR_OT_inspect_scene(bpy.types.Operator):
+    """Display information and statistics about K2 Engine objects in scene"""
+    bl_idname = "kongor.inspect_scene"
+    bl_label = "Inspect Scene"
 
     def execute(self, context):
         meshes = [o for o in context.scene.objects if o.type == "MESH"]
         armatures = [o for o in context.scene.objects if o.type == "ARMATURE"]
-        surfs = [
+        surfaces = [
             o for o in meshes
-            if getattr(o.k2_mesh_settings, "is_collision_surface", False) or "_surf" in o.name.lower()
+            if getattr(o.kongor, "is_collision_surface", False) or "_surf" in o.name.lower()
         ]
+        visual_meshes = len(meshes) - len(surfaces)
 
-        msg = f"K2 Scene: {len(meshes)} Meshes, {len(armatures)} Armatures, {len(surfs)} Collision Surfaces."
+        msg = f"K2 Scene: {visual_meshes} Visual Meshes, {len(surfaces)} Collision Surfaces, {len(armatures)} Armatures."
         self.report({"INFO"}, msg)
         return {"FINISHED"}
 
 classes = (
-    IMPORT_OT_k2_model,
-    EXPORT_OT_k2_model,
-    IMPORT_OT_k2_clip,
-    K2_OT_scene_info,
+    KONGOR_OT_import_model,
+    KONGOR_OT_export_model,
+    KONGOR_OT_import_clip,
+    KONGOR_OT_export_clip,
+    KONGOR_OT_inspect_scene,
 )
 
 def register():
