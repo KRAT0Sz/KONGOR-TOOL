@@ -187,6 +187,48 @@ def import_k2_model_file(
 
     return armature_obj or (mesh_obj if model.meshes else None)
 
+def _get_or_create_fcurve(
+    action: bpy.types.Action,
+    datablock: bpy.types.ID,
+    data_path: str,
+    index: int,
+    group_name: str = "",
+) -> bpy.types.FCurve:
+    """Creates or ensures an FCurve in both modern Blender 5.0+ (Slotted Actions) and legacy Blender 4.x."""
+    if hasattr(action, "fcurve_ensure_for_datablock"):
+        return action.fcurve_ensure_for_datablock(datablock, data_path, index=index, group_name=group_name)
+    elif hasattr(action, "fcurves"):
+        fc = action.fcurves.find(data_path=data_path, index=index)
+        if fc is None:
+            fc = action.fcurves.new(data_path=data_path, index=index, action_group=group_name)
+        return fc
+    else:
+        layer = action.layers[0] if action.layers else action.layers.new(name="Layer")
+        strip = layer.strips[0] if layer.strips else layer.strips.new(type="KEYFRAME")
+        slot = action.slots[0] if action.slots else action.slots.new(target_id_type="OBJECT")
+        cb = strip.channelbag(slot)
+        fc = cb.fcurves.find(data_path=data_path, index=index)
+        if fc is None:
+            fc = cb.fcurves.new(data_path=data_path, index=index)
+        return fc
+
+def _insert_fcurve_keys(fc: bpy.types.FCurve, keys: List[float], to_radians: bool = False) -> None:
+    """Efficiently sets keyframe points on an FCurve."""
+    if not keys:
+        return
+    if len(keys) == 1:
+        val = math.radians(keys[0]) if to_radians else keys[0]
+        fc.keyframe_points.add(1)
+        fc.keyframe_points[0].co = (1.0, float(val))
+    else:
+        co = []
+        for idx, val in enumerate(keys):
+            v = math.radians(val) if to_radians else val
+            co.extend([float(idx + 1), float(v)])
+        fc.keyframe_points.add(len(keys))
+        fc.keyframe_points.foreach_set("co", co)
+    fc.update()
+
 def import_k2_clip_file(filepath: str, armature_obj: bpy.types.Object) -> Optional[bpy.types.Action]:
     """Reads a K2 .clip file into a Blender Action assigned to the specified armature."""
     if not armature_obj or armature_obj.type != "ARMATURE":
@@ -213,29 +255,17 @@ def import_k2_clip_file(filepath: str, armature_obj: bpy.types.Object) -> Option
             keys = channel.float_keys
 
             if kt in (0, 1, 2):
-                fc = action.fcurves.new(data_path=path_loc, index=kt)
-                if len(keys) == 1:
-                    fc.keyframe_points.insert(1, keys[0])
-                else:
-                    for idx, val in enumerate(keys):
-                        fc.keyframe_points.insert(idx + 1, val)
+                fc = _get_or_create_fcurve(action, armature_obj, path_loc, kt, group_name=bone_name)
+                _insert_fcurve_keys(fc, keys, to_radians=False)
 
             elif kt in (3, 4, 5):
                 axis_idx = 0 if kt == 3 else (1 if kt == 4 else 2)
-                fc = action.fcurves.new(data_path=path_rot, index=axis_idx)
-                if len(keys) == 1:
-                    fc.keyframe_points.insert(1, math.radians(keys[0]))
-                else:
-                    for idx, val in enumerate(keys):
-                        fc.keyframe_points.insert(idx + 1, math.radians(val))
+                fc = _get_or_create_fcurve(action, armature_obj, path_rot, axis_idx, group_name=bone_name)
+                _insert_fcurve_keys(fc, keys, to_radians=True)
 
             elif kt in (7, 8, 9):
-                fc = action.fcurves.new(data_path=path_scale, index=kt - 7)
-                if len(keys) == 1:
-                    fc.keyframe_points.insert(1, keys[0])
-                else:
-                    for idx, val in enumerate(keys):
-                        fc.keyframe_points.insert(idx + 1, val)
+                fc = _get_or_create_fcurve(action, armature_obj, path_scale, kt - 7, group_name=bone_name)
+                _insert_fcurve_keys(fc, keys, to_radians=False)
 
     bpy.context.scene.frame_start = 1
     bpy.context.scene.frame_end = clip.header.num_frames
