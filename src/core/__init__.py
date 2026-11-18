@@ -17,16 +17,25 @@ from .models import (
     K2ModelHeader,
     K2Bone,
     K2Mesh,
+    K2BlendedLink,
+    K2Plane,
+    K2Edge,
     K2Surface,
     K2ClipData,
     K2ClipHeader,
     K2BoneMotion,
     K2MotionChannel,
 )
-from .chunk_io import K2ChunkReader, K2ChunkWriter, ChunkIOError
-from .math_k2 import Matrix43, euler_yxz_to_quat, quat_to_euler_yxz, calculate_tangent_sign, BoundingBox
+from .chunk_io import K2ChunkReader, K2ChunkWriter, K2ChunkError, ChunkIOError
+from .math_k2 import (
+    Matrix43,
+    euler_yxz_to_quat,
+    quat_to_euler_yxz,
+    calculate_tangent_sign,
+    BoundingBox,
+)
 from .smdl_reader import read_smdl
-from .smdl_writer import write_smdl, split_and_remap_vertices
+from .smdl_writer import write_smdl, split_and_remap_vertices, VertexAttributes
 from .clip_reader import read_clip
 from .clip_writer import write_clip
 from .xml_companion import (
@@ -52,6 +61,9 @@ __all__ = [
     "K2ModelHeader",
     "K2Bone",
     "K2Mesh",
+    "K2BlendedLink",
+    "K2Plane",
+    "K2Edge",
     "K2Surface",
     "K2ClipData",
     "K2ClipHeader",
@@ -59,7 +71,7 @@ __all__ = [
     "K2MotionChannel",
     "K2ChunkReader",
     "K2ChunkWriter",
-    "ChunkIOError",
+    "K2ChunkError",
     "Matrix43",
     "euler_yxz_to_quat",
     "quat_to_euler_yxz",
@@ -68,6 +80,7 @@ __all__ = [
     "read_smdl",
     "write_smdl",
     "split_and_remap_vertices",
+    "VertexAttributes",
     "read_clip",
     "write_clip",
     "K2Material",

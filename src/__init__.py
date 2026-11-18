@@ -1,5 +1,5 @@
 """
-KONGOR TOOL - K2 Engine Blender Add-on
+KONGOR TOOL - K2 Engine Blender Add-on / Extension
 Clean Architecture implementation for Blender >=4.2 / 5.0 (Python 3.11+ / 3.13+)
 """
 
@@ -14,18 +14,12 @@ bl_info = {
 }
 
 def register():
-    try:
-        from . import blender
-        blender.register()
-    except ImportError:
-        pass
+    from . import blender
+    blender.register()
 
 def unregister():
-    try:
-        from . import blender
-        blender.unregister()
-    except ImportError:
-        pass
+    from . import blender
+    blender.unregister()
 
 if __name__ == "__main__":
     register()

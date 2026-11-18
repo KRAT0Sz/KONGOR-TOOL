@@ -10,6 +10,8 @@ from typing import BinaryIO, Generator, NamedTuple
 class ChunkIOError(Exception):
     pass
 
+K2ChunkError = ChunkIOError
+
 class Chunk(NamedTuple):
     name: bytes
     length: int
