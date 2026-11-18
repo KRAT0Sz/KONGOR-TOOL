@@ -1,7 +1,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 .pytest_cache/
 .venv/
 *.blend1
 legacy_k2_blender/
+development_plan/

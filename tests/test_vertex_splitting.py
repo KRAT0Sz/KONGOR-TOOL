@@ -1,6 +1,6 @@
 import pytest
-from k2_blender.core.models import VertexAttributes
-from k2_blender.core.smdl_writer import split_and_remap_vertices
+from src.core.models import VertexAttributes
+from src.core.smdl_writer import split_and_remap_vertices
 
 def test_identical_vertices_are_deduplicated():
     # Two vertices with identical pos, normal, uv, color, weights

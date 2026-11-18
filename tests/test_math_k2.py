@@ -1,6 +1,6 @@
 import math
 import pytest
-from k2_blender.core.math_k2 import (
+from src.core.math_k2 import (
     Matrix43,
     euler_yxz_to_quat,
     quat_to_euler_yxz,

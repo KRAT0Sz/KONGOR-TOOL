@@ -1,7 +1,7 @@
 import io
 import pytest
-from k2_blender.core.smdl_reader import read_smdl
-from k2_blender.core.smdl_writer import write_smdl
+from src.core.smdl_reader import read_smdl
+from src.core.smdl_writer import write_smdl
 
 def test_smdl_read_synthetic(sample_smdl_bytes):
     model = read_smdl(io.BytesIO(sample_smdl_bytes))

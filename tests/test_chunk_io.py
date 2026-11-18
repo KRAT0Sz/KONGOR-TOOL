@@ -1,7 +1,7 @@
 import io
 import struct
 import pytest
-from k2_blender.core.chunk_io import K2ChunkReader, K2ChunkWriter, ChunkIOError
+from src.core.chunk_io import K2ChunkReader, K2ChunkWriter, ChunkIOError
 
 def test_chunk_writer_and_reader_roundtrip():
     out = io.BytesIO()

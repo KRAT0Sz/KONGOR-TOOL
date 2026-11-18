@@ -1,7 +1,7 @@
 import io
 import pytest
-from k2_blender.core.clip_reader import read_clip
-from k2_blender.core.clip_writer import write_clip
+from src.core.clip_reader import read_clip
+from src.core.clip_writer import write_clip
 
 def test_clip_read_synthetic(sample_clip_bytes):
     clip = read_clip(io.BytesIO(sample_clip_bytes))
@@ -55,7 +55,7 @@ def test_clip_write_and_read_roundtrip(sample_clip_bytes):
 
 def test_clip_constant_keyframe_compression():
     # If all frames have identical value, writer should compress to 1 key
-    from k2_blender.core.models import K2ClipData, K2ClipHeader, K2BoneMotion, K2MotionChannel
+    from src.core.models import K2ClipData, K2ClipHeader, K2BoneMotion, K2MotionChannel
     
     clip = K2ClipData(
         header=K2ClipHeader(version=2, num_motions=1, num_frames=100),

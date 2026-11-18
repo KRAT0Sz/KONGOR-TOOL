@@ -1,5 +1,5 @@
 import pytest
-from k2_blender.core.xml_companion import (
+from src.core.xml_companion import (
     K2Material,
     K2MaterialPhase,
     K2Sampler,

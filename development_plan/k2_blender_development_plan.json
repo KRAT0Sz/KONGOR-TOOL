@@ -73,7 +73,7 @@
     }
   ],
   "new_project_architecture": {
-    "root": "k2_blender/",
+    "root": "src/",
     "modules": {
       "__init__.py": "เฉพาะ bl_info และการ Register/Unregister Add-on เข้ากับ Blender เท่านั้น (ห้ามมี Business Logic)",
       "core/": {
