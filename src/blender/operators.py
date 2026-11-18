@@ -232,6 +232,61 @@ class KONGOR_OT_toggle_bone_xray(bpy.types.Operator):
         self.report({"INFO"}, f"Bones In Front (X-Ray): {state_str} ({len(armatures)} armature(s))")
         return {"FINISHED"}
 
+class KONGOR_OT_fit_bone_size(bpy.types.Operator):
+    """Automatically adjust bone lengths on Armature to match character proportions"""
+    bl_idname = "kongor.fit_bone_size"
+    bl_label = "Fit Bone Size"
+    bl_description = "Automatically resize Armature bones to match character proportions and joints"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        armatures = get_target_armatures(context)
+        if not armatures:
+            self.report({"WARNING"}, "No Armature found in scene.")
+            return {"CANCELLED"}
+
+        count = 0
+        for arm_obj in armatures:
+            if not arm_obj.data:
+                continue
+
+            dim = max(arm_obj.dimensions) if any(arm_obj.dimensions) else 0.0
+            if dim < 1.0:
+                meshes = [o for o in context.scene.objects if o.type == "MESH" and o.parent == arm_obj]
+                if meshes:
+                    dim = max(max(m.dimensions) for m in meshes)
+            default_bone_len = max(dim * 0.05, 3.0) if dim > 1.0 else 5.0
+
+            orig_active = context.view_layer.objects.active
+            context.view_layer.objects.active = arm_obj
+            bpy.ops.object.mode_set(mode="EDIT")
+            edit_bones = arm_obj.data.edit_bones
+
+            for eb in edit_bones:
+                child_dists = [
+                    (c.head - eb.head).length
+                    for c in eb.children
+                    if (c.head - eb.head).length > 0.05
+                ]
+                if child_dists:
+                    target_len = min(child_dists)
+                elif eb.parent:
+                    target_len = max(eb.parent.length * 0.7, default_bone_len * 0.5)
+                else:
+                    target_len = default_bone_len
+
+                target_len = max(target_len, 0.5)
+                eb.length = target_len
+
+            bpy.ops.object.mode_set(mode="OBJECT")
+            if orig_active:
+                context.view_layer.objects.active = orig_active
+
+            count += len(arm_obj.data.bones)
+
+        self.report({"INFO"}, f"Successfully resized {count} bones across {len(armatures)} armature(s).")
+        return {"FINISHED"}
+
 class KONGOR_OT_inspect_scene(bpy.types.Operator):
     """Display information and statistics about K2 Engine objects in scene"""
     bl_idname = "kongor.inspect_scene"
@@ -302,6 +357,9 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         row.operator("kongor.toggle_bones", text="Toggle Bones", icon="BONE_DATA", depress=bones_vis)
         row.operator("kongor.toggle_bone_names", text="Toggle Names", icon="SYNTAX_ON", depress=names_vis)
         row.operator("kongor.toggle_bone_xray", text="In Front (X-Ray)", icon="XRAY", depress=xray_vis)
+
+        row_fit = rig_box.row(align=True)
+        row_fit.operator("kongor.fit_bone_size", text="Auto-Fit Bone Sizes", icon="ARROW_LEFTRIGHT")
 
         if target_arms and target_arms[0].data:
             arm_obj = target_arms[0]
@@ -395,6 +453,7 @@ classes = (
     KONGOR_OT_toggle_bones,
     KONGOR_OT_toggle_bone_names,
     KONGOR_OT_toggle_bone_xray,
+    KONGOR_OT_fit_bone_size,
     KONGOR_OT_inspect_scene,
     KONGOR_OT_dialog,
     KONGOR_OT_uninstall,

@@ -25,6 +25,7 @@ class KONGOR_MT_main_menu(bpy.types.Menu):
         layout.operator("kongor.toggle_bones", text="Toggle Bones (Show/Hide)", icon="BONE_DATA")
         layout.operator("kongor.toggle_bone_names", text="Toggle Bone Names", icon="SYNTAX_ON")
         layout.operator("kongor.toggle_bone_xray", text="Toggle Bones In Front (X-Ray)", icon="XRAY")
+        layout.operator("kongor.fit_bone_size", text="Auto-Fit Bone Sizes", icon="ARROW_LEFTRIGHT")
         layout.separator()
         layout.operator("kongor.inspect_scene", text="Inspect Scene Objects", icon="INFO")
         layout.separator()
