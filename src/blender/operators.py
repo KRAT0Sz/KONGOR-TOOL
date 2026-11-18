@@ -133,12 +133,58 @@ class KONGOR_OT_inspect_scene(bpy.types.Operator):
         self.report({"INFO"}, msg)
         return {"FINISHED"}
 
+class KONGOR_OT_uninstall(bpy.types.Operator):
+    """Uninstall KONGOR TOOL extension and remove files from Blender"""
+    bl_idname = "kongor.uninstall"
+    bl_label = "Uninstall KONGOR TOOL"
+    bl_options = {"REGISTER", "INTERNAL"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event)
+
+    def execute(self, context):
+        import shutil
+        import pathlib
+
+        root_pkg = __package__.rsplit(".blender", 1)[0] if ".blender" in __package__ else __package__
+        uninstalled = False
+
+        # 1. Blender 4.2+ Extension Uninstaller
+        if hasattr(bpy.ops, "extensions") and hasattr(bpy.ops.extensions, "package_uninstall"):
+            try:
+                bpy.ops.extensions.package_uninstall(pkg_id="kongor_tool")
+                uninstalled = True
+            except Exception:
+                pass
+
+        # 2. Legacy Add-on Remove operator
+        if not uninstalled and hasattr(bpy.ops, "preferences") and hasattr(bpy.ops.preferences, "addon_remove"):
+            try:
+                bpy.ops.preferences.addon_remove(module=root_pkg)
+                uninstalled = True
+            except Exception:
+                pass
+
+        # 3. Direct disk cleanup fallback
+        try:
+            current_file = pathlib.Path(__file__).resolve()
+            addon_dir = current_file.parent.parent
+            if addon_dir.exists() and (addon_dir / "blender_manifest.toml").exists():
+                shutil.rmtree(addon_dir, ignore_errors=True)
+                uninstalled = True
+        except Exception:
+            pass
+
+        self.report({"INFO"}, "KONGOR TOOL has been uninstalled. Restart Blender to finish.")
+        return {"FINISHED"}
+
 classes = (
     KONGOR_OT_import_model,
     KONGOR_OT_export_model,
     KONGOR_OT_import_clip,
     KONGOR_OT_export_clip,
     KONGOR_OT_inspect_scene,
+    KONGOR_OT_uninstall,
 )
 
 def register():

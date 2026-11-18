@@ -75,11 +75,27 @@ class KongorObjectSettings(bpy.types.PropertyGroup):
         default=-1,
     )
 
+root_pkg = __package__.rsplit(".blender", 1)[0] if ".blender" in __package__ else __package__
+
+class KONGOR_AddonPreferences(bpy.types.AddonPreferences):
+    bl_idname = root_pkg
+
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box()
+        box.label(text="KONGOR TOOL (v5.0.0)", icon="TOOL_SETTINGS")
+        box.label(text="Heroes of Newerth K2 Engine Model & Animation (.model / .clip) Tool")
+        box.separator()
+        row = box.row()
+        row.alert = True
+        row.operator("kongor.uninstall", text="Uninstall KONGOR TOOL", icon="TRASH")
+
 classes = (
     KongorModelImportSettings,
     KongorModelExportSettings,
     KongorClipSettings,
     KongorObjectSettings,
+    KONGOR_AddonPreferences,
 )
 
 def register():
