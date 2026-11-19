@@ -78,3 +78,51 @@ def test_smdl_write_and_read_roundtrip(sample_smdl_bytes):
     assert len(s1.points) == len(s2.points)
     assert len(s1.edges) == len(s2.edges)
     assert s1.tris == s2.tris
+
+def test_smdl_tangent_sign_and_lnk3_specification():
+    """Verifies that SMDL v3 writes 'tang', 'sign', and 'lnk3' for skinned meshes."""
+    from src.core.models import K2ModelData, K2ModelHeader, K2Mesh, K2Bone, K2BlendedLink
+    from src.core.chunk_io import K2ChunkReader
+
+    model = K2ModelData(
+        header=K2ModelHeader(version=3, num_meshes=1, num_bones=1),
+        bones=[K2Bone(index=0, name="root", parent_index=-1, inv_base=[0.0]*12, base=[0.0]*12)],
+        meshes=[
+            K2Mesh(
+                mesh_index=0,
+                name="test_mesh",
+                shader_name="material",
+                mode=1,
+                vertices=[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)],
+                faces=[(0, 1, 2)],
+                normals=[(0.0, 0.0, 1.0)] * 3,
+                uv_channels=[[(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]],
+                tangent_channels=[[(1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0)]],
+                sign_channels=[[0, 255, 0]],
+                blended_links=[
+                    K2BlendedLink(weights=[1.0], indexes=[0]),
+                    K2BlendedLink(weights=[1.0], indexes=[0]),
+                    K2BlendedLink(weights=[1.0], indexes=[0]),
+                ]
+            )
+        ]
+    )
+
+    out = io.BytesIO()
+    write_smdl(out, model)
+    data = out.getvalue()
+
+    # Verify chunk tags
+    reader = K2ChunkReader(io.BytesIO(data), expected_signature=b"SMDL")
+    chunk_names = [c.name for c in reader.iter_chunks()]
+    assert b"lnk3" in chunk_names
+    assert b"tang" in chunk_names
+    assert b"sign" in chunk_names
+
+    # Read back and verify values
+    read_back = read_smdl(io.BytesIO(data))
+    rm = read_back.meshes[0]
+    assert len(rm.tangent_channels[0]) == 3
+    assert rm.tangent_channels[0][0] == (1.0, 0.0, 0.0)
+    assert rm.sign_channels[0] == [0, 255, 0]
+    assert len(rm.blended_links) == 3

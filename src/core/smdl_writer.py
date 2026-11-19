@@ -119,7 +119,8 @@ def write_smdl(stream: BinaryIO, model: K2ModelData) -> None:
                 lnk_payload.extend(struct.pack("<i", num_weights))
                 lnk_payload.extend(struct.pack(f"<{num_weights}f", *link.weights))
                 lnk_payload.extend(struct.pack(f"<{num_weights}i", *link.indexes))
-            writer.write_chunk(b"lnk1", bytes(lnk_payload))
+            lnk_tag = b"lnk3" if model.header.version >= 3 else b"lnk1"
+            writer.write_chunk(lnk_tag, bytes(lnk_payload))
         elif m.mode == 2 and m.single_links:
             lnk2_payload = bytearray()
             lnk2_payload.extend(struct.pack("<2i", m.mesh_index, len(m.vertices)))

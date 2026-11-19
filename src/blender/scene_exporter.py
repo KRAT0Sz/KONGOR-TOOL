@@ -414,6 +414,14 @@ def export_k2_model_file(
         bm.to_mesh(temp_mesh)
         bm.free()
 
+        has_tangents = False
+        if temp_mesh.uv_layers.active:
+            try:
+                temp_mesh.calc_tangents()
+                has_tangents = True
+            except Exception:
+                has_tangents = False
+
         uv_layer = temp_mesh.uv_layers.active.data if temp_mesh.uv_layers.active else None
         col_attr = temp_mesh.color_attributes.active if temp_mesh.color_attributes else None
         col_domain = col_attr.domain if col_attr else None
@@ -438,10 +446,13 @@ def export_k2_model_file(
             for poly in target_polys:
                 poly_loops: List[int] = []
                 for loop_idx in poly.loop_indices:
-                    v_idx = temp_mesh.loops[loop_idx].vertex_index
+                    loop_elem = temp_mesh.loops[loop_idx]
+                    v_idx = loop_elem.vertex_index
                     v = temp_mesh.vertices[v_idx]
                     pos = tuple(v.co)
-                    normal = (0.0, 0.0, 0.0) if exclude_normals else tuple(temp_mesh.loops[loop_idx].normal)
+                    normal = (0.0, 0.0, 0.0) if exclude_normals else tuple(loop_elem.normal)
+                    tangent = tuple(loop_elem.tangent) if has_tangents else (1.0, 0.0, 0.0)
+                    sign = (255 if loop_elem.bitangent_sign < 0.0 else 0) if has_tangents else 0
 
                     mesh_bbox.add_point(pos)
                     overall_bbox.add_point(pos)
@@ -480,8 +491,8 @@ def export_k2_model_file(
                             position=pos,
                             normal=normal,
                             uvs=uvs,
-                            tangents=[],
-                            signs=[0],
+                            tangents=[tangent],
+                            signs=[sign],
                             colors=colors,
                             weights=weights,
                         )
@@ -526,6 +537,8 @@ def export_k2_model_file(
                 faces=clean_faces,
                 normals=[v.normal for v in unique_verts],
                 uv_channels=[[v.uvs[0] for v in unique_verts]] if (unique_verts and unique_verts[0].uvs) else [],
+                tangent_channels=[[v.tangents[0] for v in unique_verts]] if (unique_verts and unique_verts[0].tangents) else [],
+                sign_channels=[[v.signs[0] for v in unique_verts]] if (unique_verts and unique_verts[0].signs) else [],
                 color_channels=[[v.colors[0] for v in unique_verts]] if (unique_verts and unique_verts[0].colors) else [],
             )
 
