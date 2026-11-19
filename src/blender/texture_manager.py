@@ -10,12 +10,13 @@ import bpy
 
 # Official K2 Engine map samplers and their standard filename suffixes
 K2_SAMPLER_PATTERNS: Dict[str, list[str]] = {
-    "diffuse": ["_color", "_diffuse", "_d", "_albedo"],
-    "normalmap": ["_norm", "_normal", "_n", "_bump"],
-    "specular": ["_spec", "_s", "_specular"],
-    "gloss": ["_gloss", "_roughness"],
-    "lightmap": ["_lightmap", "_si"],
-    "occlusion": ["_occlusion", "_ao"],
+    "diffuse": ["_color", "_diffuse", "_d", "_albedo", "color"],
+    "normalmap": ["_normal_rxgb", "_norm_rxgb", "_rxgb", "_norm", "_normal", "_n", "_bump", "normal_rxgb", "normal", "norm"],
+    "specular": ["_spec_color", "_spec", "_s", "_specular", "spec_color", "spec"],
+    "gloss": ["_gloss", "_roughness", "gloss"],
+    "lightmap": ["_glow", "_lightmap", "_si", "glow", "lightmap"],
+    "occlusion": ["_occlusion", "_ao", "occlusion"],
+    "team": ["_team", "team"],
 }
 
 SUPPORTED_EXTENSIONS = [".dds", ".tga", ".png", ".jpg", ".jpeg"]
@@ -24,11 +25,16 @@ def locate_sampler_texture(base_dir: str, stem: str, sampler_type: str) -> Optio
     """Finds texture files in base_dir corresponding to official K2 sampler types."""
     patterns = K2_SAMPLER_PATTERNS.get(sampler_type, [f"_{sampler_type}"])
     
+    # Direct search with stem prefixes
     for pat in patterns:
         for ext in SUPPORTED_EXTENSIONS:
             target = os.path.join(base_dir, f"{stem}{pat}{ext}")
             if os.path.exists(target):
                 return target
+            # Also check without stem prefix (e.g. "color.tga", "normal_rxgb.dds")
+            bare_target = os.path.join(base_dir, f"{pat}{ext}")
+            if os.path.exists(bare_target):
+                return bare_target
 
     # Case-insensitive fallback
     if os.path.isdir(base_dir):
@@ -38,6 +44,9 @@ def locate_sampler_texture(base_dir: str, stem: str, sampler_type: str) -> Optio
                 candidate = f"{stem}{pat}{ext}".lower()
                 if candidate in disk_files:
                     return os.path.join(base_dir, disk_files[candidate])
+                bare_candidate = f"{pat}{ext}".lower()
+                if bare_candidate in disk_files:
+                    return os.path.join(base_dir, disk_files[bare_candidate])
     return None
 
 def build_k2_shader_material(
@@ -83,12 +92,30 @@ def build_k2_shader_material(
         img = bpy.data.images.load(normal_path, check_existing=True)
         img.colorspace_settings.name = "Non-Color"
         tex_node = nodes.new(type="ShaderNodeTexImage")
-        tex_node.location = (-400, -100)
+        tex_node.location = (-500, -100)
         tex_node.image = img
 
         norm_map = nodes.new(type="ShaderNodeNormalMap")
         norm_map.location = (-150, -100)
-        links.new(tex_node.outputs["Color"], norm_map.inputs["Color"])
+
+        # Detect K2 RXGB (DXT5nm) format:
+        # In RXGB: Red (Tangent X) is stored in Alpha channel, Green is in Green, Blue is in Blue.
+        # Swizzle in Blender shader tree: R = Alpha, G = Green, B = Blue.
+        if "rxgb" in os.path.basename(normal_path).lower():
+            sep_node = nodes.new(type="ShaderNodeSeparateColor")
+            sep_node.location = (-350, -100)
+            comb_node = nodes.new(type="ShaderNodeCombineColor")
+            comb_node.location = (-220, -100)
+
+            links.new(tex_node.outputs["Color"], sep_node.inputs["Color"])
+            links.new(tex_node.outputs["Alpha"], comb_node.inputs["Red"])
+            links.new(sep_node.outputs["Green"], comb_node.inputs["Green"])
+            links.new(sep_node.outputs["Blue"], comb_node.inputs["Blue"])
+
+            links.new(comb_node.outputs["Color"], norm_map.inputs["Color"])
+        else:
+            links.new(tex_node.outputs["Color"], norm_map.inputs["Color"])
+
         links.new(norm_map.outputs["Normal"], principled.inputs["Normal"])
 
     # 3. Specular Sampler

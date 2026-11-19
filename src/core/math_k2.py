@@ -153,3 +153,27 @@ class BoundingBox:
             max(self.bmax[1], p[1]),
             max(self.bmax[2], p[2]),
         )
+
+def swizzle_rgb_to_rxgb(r: int, g: int, b: int, a: int = 255) -> Tuple[int, int, int, int]:
+    """
+    Converts standard Tangent-space Normal RGB(A) to K2 Engine RXGB (DXT5nm) layout.
+    Source: vid_d3d9/d3d9_texture.cpp:903-924.
+    In K2 Engine RXGB layout:
+      Dst.Blue = Src.Blue (Z)
+      Dst.Green = Src.Green (Y)
+      Dst.Red = 255 (Unused dummy)
+      Dst.Alpha = Src.Red (X tangent)
+    Returns: (red=255, green=g, blue=b, alpha=r) in RGBA tuple.
+    """
+    return (255, g, b, r)
+
+def swizzle_rxgb_to_rgb(r_dummy: int, g: int, b: int, a_x: int) -> Tuple[int, int, int, int]:
+    """
+    Decodes K2 Engine RXGB (DXT5nm) back to standard Tangent-space Normal RGB(A).
+    Source: shaders/ps_3_0/mesh_color_unit_team_lightmap_spec.psh:153-157.
+      Normal.X = Alpha
+      Normal.Y = Green
+      Normal.Z = Blue
+    Returns: (red=a_x, green=g, blue=b, alpha=255).
+    """
+    return (a_x, g, b, 255)
