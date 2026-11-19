@@ -95,12 +95,31 @@ class KONGOR_PT_object_panel(bpy.types.Panel):
         layout = self.layout
         obj = context.object
         box = layout.box()
-        box.label(text="K2 Object Settings", icon="OBJECT_DATA")
-        box.prop(obj.kongor, "mesh_type")
+        box.label(text="Mesh Info", icon="OBJECT_DATA")
+        
+        col_mesh = box.column(align=True)
+        col_mesh.prop(obj, "name", text="Mesh")
+        
+        row_opts = box.row()
+        row_opts.prop(obj.kongor, "exclude_normals")
+        row_opts.prop(obj.kongor, "is_roof")
+
+        col_radio = box.column(align=True)
+        col_radio.prop(obj.kongor, "mesh_type", expand=True)
+
         if obj.kongor.mesh_type == "NORMAL":
             box.prop(obj.kongor, "bonelink")
         elif obj.kongor.mesh_type == "SURF":
             box.label(text="Exports as collision surface (_surf polyhedron)", icon="INFO")
+
+        # Material Slots (matches S2Exporter Mesh Info material slots)
+        mat_box = box.box()
+        mat_box.label(text="Material", icon="MATERIAL")
+        if obj.material_slots:
+            for slot in obj.material_slots:
+                mat_box.prop(slot, "material", text="")
+        else:
+            mat_box.label(text="No materials assigned", icon="INFO")
 
 classes = (
     KONGOR_MT_rigging_menu,

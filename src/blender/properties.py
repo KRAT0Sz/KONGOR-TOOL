@@ -52,6 +52,16 @@ class KongorModelExportSettings(bpy.types.PropertyGroup):
         description="Force export all geometry as rigid static meshes (ignores bones/skinning, ideal for rocks, scenery, and static props)",
         default=False,
     )
+    remove_hierarchy: BoolProperty(
+        name="Remove Hierarchy",
+        description="Flatten bone hierarchy transforms under root (matching S2Exporter)",
+        default=False,
+    )
+    copy_textures: BoolProperty(
+        name="Copy Textures",
+        description="Copy referenced texture files into the model export directory (matching S2Exporter)",
+        default=True,
+    )
     flip_v: BoolProperty(
         name="Flip UV (V-Axis)",
         description="Invert V texture coordinate (1.0 - V) for K2 Engine standard",
@@ -111,12 +121,24 @@ class KongorObjectSettings(bpy.types.PropertyGroup):
         name="Mesh Type",
         description="Role of this mesh in K2 Engine (matches S2Exporter Mesh Info)",
         items=[
-            ("NORMAL", "Normal Mesh", "Standard visual geometry rendered in game"),
-            ("SURF", "Collision Surface (_surf)", "Convex polyhedron collision shape for unit pathing/blocking"),
-            ("BONE", "Reference Bone (_bone)", "Socket or attachment point helper"),
-            ("ROOF", "Roof Mesh", "Structure roof mesh"),
+            ("NORMAL", "Normal mesh", "Standard visual geometry rendered in game"),
+            ("SURF", "Collision surface", "Convex polyhedron collision shape for unit pathing/blocking"),
+            ("BONE", "Reference bone", "Socket or attachment point helper"),
+            ("SPRITE", "Sprite", "Quad billboard sprite"),
+            ("GROUND", "Ground plane", "Ground plane surface or decal"),
+            ("ROOF", "Roof mesh", "Structure roof mesh"),
         ],
         default="NORMAL",
+    )
+    exclude_normals: BoolProperty(
+        name="Exclude normals",
+        description="Exclude vertex normal vectors for this mesh (writes zero normals, matching S2Exporter)",
+        default=False,
+    )
+    is_roof: BoolProperty(
+        name="Roof",
+        description="Structure roof mesh (fades out when camera/hero is underneath)",
+        default=False,
     )
     is_collision_surface: BoolProperty(
         name="Collision Surface",

@@ -4,8 +4,10 @@ Exports Blender Armatures, Meshes, Collision Surfaces, and Animations to K2 Engi
 Uses Pure Python Core IR and Ground Truth C++ specs. Zero legacy dependencies.
 """
 
+from dataclasses import dataclass
 import math
 import os
+import shutil
 from typing import Dict, List, Optional, Tuple
 import bpy
 import bmesh
@@ -73,6 +75,49 @@ def _is_collision_surface(obj: bpy.types.Object) -> bool:
         or "collision" in obj.name.lower()
     )
 
+@dataclass
+class ResolvedTexture:
+    tex_type: str
+    filename: str
+    source_path: str = ""
+    image: Optional[bpy.types.Image] = None
+
+def _copy_texture_file(src_path: str, dst_path: str, image: Optional[bpy.types.Image] = None) -> bool:
+    """Safely copies a texture file to destination or extracts packed/in-memory image data."""
+    if not dst_path:
+        return False
+    dst_dir = os.path.dirname(dst_path)
+    if dst_dir and not os.path.exists(dst_dir):
+        os.makedirs(dst_dir, exist_ok=True)
+
+    # 1. Source file exists on disk
+    if src_path and os.path.isfile(src_path):
+        try:
+            if os.path.abspath(src_path) != os.path.abspath(dst_path):
+                shutil.copy2(src_path, dst_path)
+            return True
+        except Exception as e:
+            print(f"[KONGOR] Warning: Failed to copy texture '{src_path}' to '{dst_path}': {e}")
+
+    # 2. Packed file in Blender image
+    if image and hasattr(image, "packed_file") and image.packed_file:
+        try:
+            with open(dst_path, "wb") as f:
+                f.write(image.packed_file.data)
+            return True
+        except Exception as e:
+            print(f"[KONGOR] Warning: Failed to unpack texture '{image.name}' to '{dst_path}': {e}")
+
+    # 3. In-memory image with pixel data
+    if image and hasattr(image, "has_data") and image.has_data:
+        try:
+            image.save_render(dst_path)
+            return True
+        except Exception as e:
+            print(f"[KONGOR] Warning: Failed to save in-memory texture '{image.name}' to '{dst_path}': {e}")
+
+    return False
+
 def _node_image_path(node) -> Optional[str]:
     if not node or node.type != 'TEX_IMAGE' or not node.image:
         return None
@@ -95,26 +140,97 @@ def _looks_like_tex_type(text: str, tex_type: str) -> bool:
         return any(k in text for k in ('glow', 'lightmap', 'emissive', 'emis', 'self'))
     return False
 
-def _resolve_material_textures(mat: Optional[bpy.types.Material], export_dir: str = "") -> Dict[str, str]:
-    textures: Dict[str, str] = {}
+def _resolve_material_textures(mat: Optional[bpy.types.Material], export_dir: str = "") -> Dict[str, ResolvedTexture]:
+    textures: Dict[str, ResolvedTexture] = {}
     if not mat or not mat.use_nodes or not mat.node_tree:
         return textures
 
+    # 1. Inspect Principled BSDF socket connections
+    bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+    if bsdf:
+        for inp in bsdf.inputs:
+            if not inp.is_linked:
+                continue
+            for link in inp.links:
+                from_node = link.from_node
+
+                # Base Color -> 'color'
+                if inp.name in ("Base Color", "Base Color RGB") and from_node.type == 'TEX_IMAGE' and from_node.image:
+                    if 'color' not in textures:
+                        src_path = _node_image_path(from_node) or ""
+                        fname = os.path.basename(src_path) if src_path else f"{from_node.image.name}.png"
+                        textures['color'] = ResolvedTexture('color', fname, src_path, from_node.image)
+
+                # Normal -> 'normal'
+                elif inp.name == "Normal":
+                    tex_node = None
+                    if from_node.type == 'NORMAL_MAP':
+                        for n_inp in from_node.inputs:
+                            if n_inp.is_linked and n_inp.links:
+                                cand = n_inp.links[0].from_node
+                                if cand.type == 'TEX_IMAGE' and cand.image:
+                                    tex_node = cand
+                                    break
+                    elif from_node.type == 'TEX_IMAGE' and from_node.image:
+                        tex_node = from_node
+
+                    if tex_node and 'normal' not in textures:
+                        src_path = _node_image_path(tex_node) or ""
+                        fname = os.path.basename(src_path) if src_path else f"{tex_node.image.name}.png"
+                        textures['normal'] = ResolvedTexture('normal', fname, src_path, tex_node.image)
+
+                # Emission Color -> 'lightmap'
+                elif inp.name in ("Emission Color", "Emission") and from_node.type == 'TEX_IMAGE' and from_node.image:
+                    if 'lightmap' not in textures:
+                        src_path = _node_image_path(from_node) or ""
+                        fname = os.path.basename(src_path) if src_path else f"{from_node.image.name}.png"
+                        textures['lightmap'] = ResolvedTexture('lightmap', fname, src_path, from_node.image)
+
+                # Specular / Roughness -> 'specular'
+                elif inp.name in ("Specular IOR Level", "Roughness", "Specular Tint", "Metallic"):
+                    tex_node = None
+                    if from_node.type == 'TEX_IMAGE' and from_node.image:
+                        tex_node = from_node
+                    elif from_node.type == 'SEPARATE_COLOR':
+                        for sc_inp in from_node.inputs:
+                            if sc_inp.is_linked and sc_inp.links:
+                                cand = sc_inp.links[0].from_node
+                                if cand.type == 'TEX_IMAGE' and cand.image:
+                                    tex_node = cand
+                                    break
+                    if tex_node and 'specular' not in textures:
+                        src_path = _node_image_path(tex_node) or ""
+                        fname = os.path.basename(src_path) if src_path else f"{tex_node.image.name}.png"
+                        textures['specular'] = ResolvedTexture('specular', fname, src_path, tex_node.image)
+
+    # 2. Heuristic check across all image texture nodes for unassigned channels
     for node in mat.node_tree.nodes:
-        if node.type != 'TEX_IMAGE':
+        if node.type != 'TEX_IMAGE' or not node.image:
             continue
-        image_path = _node_image_path(node)
-        if not image_path:
-            continue
-        filename = os.path.basename(image_path).lower()
+        image_path = _node_image_path(node) or ""
+        filename = os.path.basename(image_path).lower() if image_path else node.image.name.lower()
         label = (node.label or node.name or "").lower()
         search_text = f"{label} {filename}"
         for tex_type in ('color', 'normal', 'specular', 'team', 'lightmap'):
             if tex_type in textures:
                 continue
             if _looks_like_tex_type(search_text, tex_type):
-                textures[tex_type] = os.path.basename(image_path)
+                fname = os.path.basename(image_path) if image_path else f"{node.image.name}.png"
+                textures[tex_type] = ResolvedTexture(tex_type, fname, image_path, node.image)
                 break
+
+    # 3. Collect any other image nodes for comprehensive copying
+    extra_idx = 1
+    for node in mat.node_tree.nodes:
+        if node.type != 'TEX_IMAGE' or not node.image:
+            continue
+        if any(t.image == node.image for t in textures.values()):
+            continue
+        image_path = _node_image_path(node) or ""
+        fname = os.path.basename(image_path) if image_path else f"{node.image.name}.png"
+        textures[f"extra_{extra_idx}"] = ResolvedTexture(f"extra_{extra_idx}", fname, image_path, node.image)
+        extra_idx += 1
+
     return textures
 
 def export_k2_model_file(
@@ -133,6 +249,8 @@ def export_k2_model_file(
     export_mdf = getattr(settings, "export_mdf", True) if settings else True
     force_static = getattr(settings, "force_static", False) if settings else False
     prop_preset = getattr(settings, "prop_preset", "NONE") if settings else "NONE"
+    copy_textures = getattr(settings, "copy_textures", True) if settings else True
+    remove_hierarchy = getattr(settings, "remove_hierarchy", False) if settings else False
 
     if prop_preset in ("ROCK", "FOLIAGE", "BUILDING"):
         force_static = True
@@ -165,12 +283,13 @@ def export_k2_model_file(
 
         for idx, b in enumerate(arm_bones):
             parent_idx = -1
-            p = b.parent
-            while p:
-                if p.name in bone_name_to_index:
-                    parent_idx = bone_name_to_index[p.name]
-                    break
-                p = p.parent
+            if not remove_hierarchy:
+                p = b.parent
+                while p:
+                    if p.name in bone_name_to_index:
+                        parent_idx = bone_name_to_index[p.name]
+                        break
+                    p = p.parent
 
             # In K2 Engine: base is bone world rest matrix (3x4), inv_base is its inverse
             m = b.matrix_local
@@ -300,6 +419,7 @@ def export_k2_model_file(
         col_domain = col_attr.domain if col_attr else None
         col_layer = col_attr.data if col_attr else None
 
+        exclude_normals = getattr(obj.kongor, "exclude_normals", False)
         loop_counter = 0
         for poly in temp_mesh.polygons:
             poly_loops: List[int] = []
@@ -307,7 +427,7 @@ def export_k2_model_file(
                 v_idx = temp_mesh.loops[loop_idx].vertex_index
                 v = temp_mesh.vertices[v_idx]
                 pos = tuple(v.co)
-                normal = tuple(temp_mesh.loops[loop_idx].normal)
+                normal = (0.0, 0.0, 0.0) if exclude_normals else tuple(temp_mesh.loops[loop_idx].normal)
 
                 mesh_bbox.add_point(pos)
                 overall_bbox.add_point(pos)
@@ -426,7 +546,9 @@ def export_k2_model_file(
     with open(filepath, "wb") as f:
         write_smdl(f, model_data)
 
-    # 4. Optional S2Exporter Companion Files (.material and .mdf)
+    # 4. Optional S2Exporter Companion Files (.material and .mdf) and Texture Copying
+    copied_dst_paths = set()
+
     if export_materials:
         exported_stems = set()
         for mat in unique_materials:
@@ -447,6 +569,12 @@ def export_k2_model_file(
             if prop_preset in ("TREE", "FOLIAGE") or any(kw in mat_name_lower for kw in ("leaf", "leaves", "foliage", "flora", "plant", "branch", "twig")):
                 mat_cull = "CULL_NONE"
 
+            diff_name = resolved_tex["color"].filename if "color" in resolved_tex else def_diffuse
+            norm_name = resolved_tex["normal"].filename if "normal" in resolved_tex else def_normal
+            spec_name = resolved_tex["specular"].filename if "specular" in resolved_tex else def_specular
+            team_name = resolved_tex["team"].filename if "team" in resolved_tex else "team.tga"
+            glow_name = resolved_tex["lightmap"].filename if "lightmap" in resolved_tex else "glow.tga"
+
             k2_mat = K2Material(
                 name="",
                 vDiffuseColor="1.0000 1.0000 1.0000",
@@ -455,16 +583,26 @@ def export_k2_model_file(
                 fOpacity="1.0000",
                 fReflect="1.0000",
                 cull=mat_cull,
-                diffuse_texture=resolved_tex.get("color") or def_diffuse,
-                normal_texture=resolved_tex.get("normal") or def_normal,
-                specular_texture=resolved_tex.get("specular") or def_specular,
-                team_texture=resolved_tex.get("team") or "team.tga",
-                lightmap_texture=resolved_tex.get("lightmap") or "glow.tga",
+                diffuse_texture=diff_name,
+                normal_texture=norm_name,
+                specular_texture=spec_name,
+                team_texture=team_name,
+                lightmap_texture=glow_name,
             )
 
             mat_filepath = os.path.join(model_dir, f"{stem}.material")
             with open(mat_filepath, "w", encoding="utf-8") as f:
                 f.write(write_material_xml(k2_mat))
+
+            # Copy textures matching S2Exporter "Copy textures" option
+            if copy_textures:
+                for tinfo in resolved_tex.values():
+                    if not tinfo.filename:
+                        continue
+                    dst = os.path.join(model_dir, tinfo.filename)
+                    if dst not in copied_dst_paths:
+                        copied_dst_paths.add(dst)
+                        _copy_texture_file(tinfo.source_path, dst, tinfo.image)
 
         if not unique_materials and k2_meshes:
             k2_mat = K2Material(
@@ -478,6 +616,17 @@ def export_k2_model_file(
             mat_filepath = os.path.join(model_dir, "material.material")
             with open(mat_filepath, "w", encoding="utf-8") as f:
                 f.write(write_material_xml(k2_mat))
+
+    elif copy_textures:
+        for mat in unique_materials:
+            resolved_tex = _resolve_material_textures(mat, model_dir)
+            for tinfo in resolved_tex.values():
+                if not tinfo.filename:
+                    continue
+                dst = os.path.join(model_dir, tinfo.filename)
+                if dst not in copied_dst_paths:
+                    copied_dst_paths.add(dst)
+                    _copy_texture_file(tinfo.source_path, dst, tinfo.image)
 
     if export_mdf:
         skin_refs: List[K2SkinReference] = []

@@ -63,10 +63,13 @@ class KONGOR_OT_export_model(bpy.types.Operator, ExportHelper):
         box.label(text="Export Options", icon="EXPORT")
         box.prop(settings, "prop_preset")
         box.prop(settings, "force_static")
+        box.prop(settings, "remove_hierarchy")
+        box.prop(settings, "copy_textures")
+        box.prop(settings, "export_materials")
+        box.prop(settings, "standardize_material_names")
+        box.prop(settings, "export_mdf")
         box.prop(settings, "apply_modifiers")
         box.prop(settings, "export_deform_only")
-        box.prop(settings, "export_materials")
-        box.prop(settings, "export_mdf")
 
     def execute(self, context):
         settings = context.scene.kongor_export
@@ -361,10 +364,12 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         col = model_box.column(align=True)
         col.prop(settings_exp, "prop_preset")
         col.prop(settings_exp, "force_static")
-        col.prop(settings_exp, "apply_modifiers")
+        col.prop(settings_exp, "remove_hierarchy")
+        col.prop(settings_exp, "copy_textures")
         col.prop(settings_exp, "export_materials")
         col.prop(settings_exp, "standardize_material_names")
         col.prop(settings_exp, "export_mdf")
+        col.prop(settings_exp, "apply_modifiers")
         col.prop(settings_exp, "export_deform_only")
         col.operator("kongor.standardize_materials", text="Standardize Materials to K2", icon="MATERIAL")
         col.separator()
@@ -376,10 +381,30 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         act = context.active_object
         if act and act.type == "MESH":
             mesh_box = layout.box()
-            mesh_box.label(text=f"Selected Mesh: {act.name}", icon="MESH_DATA")
-            mesh_box.prop(act.kongor, "mesh_type")
+            mesh_box.label(text="Mesh Info", icon="OBJECT_DATA")
+            col_mesh = mesh_box.column(align=True)
+            col_mesh.prop(act, "name", text="Mesh")
+
+            row_opts = mesh_box.row()
+            row_opts.prop(act.kongor, "exclude_normals")
+            row_opts.prop(act.kongor, "is_roof")
+
+            col_radio = mesh_box.column(align=True)
+            col_radio.prop(act.kongor, "mesh_type", expand=True)
+
             if act.kongor.mesh_type == "NORMAL":
                 mesh_box.prop(act.kongor, "bonelink")
+            elif act.kongor.mesh_type == "SURF":
+                mesh_box.label(text="Exports as collision surface (_surf polyhedron)", icon="INFO")
+
+            # Material Slots (matches S2Exporter Mesh Info)
+            mat_box = mesh_box.box()
+            mat_box.label(text="Material", icon="MATERIAL")
+            if act.material_slots:
+                for slot in act.material_slots:
+                    mat_box.prop(slot, "material", text="")
+            else:
+                mat_box.label(text="No materials assigned", icon="INFO")
 
         # 3. KONGOR Rig & K2 Skeleton Tools
         rig_k2_box = layout.box()
