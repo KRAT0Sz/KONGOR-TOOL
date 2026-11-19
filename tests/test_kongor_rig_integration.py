@@ -94,14 +94,17 @@ def test_k2_bone_structure_and_hierarchy_rules():
 
     text = bridge_file.read_text(encoding="utf-8")
     assert "K2_PARENT_RULES = {" in text
-    assert '"Bip01": "Root"' in text
+    assert '"Scene Root": None' in text
+    assert '"Bip01": "Scene Root"' in text
+    assert '"_bone_origin": "Scene Root"' in text
+    assert '"_bone_center": "Bip01"' in text
     assert '"Bip01 Pelvis": "Bip01"' in text
     assert '"Bip01 Spine": "Bip01 Pelvis"' in text
     assert '"Bip01 Spine1": "Bip01 Spine"' in text
     assert '"Bip01 Head": "Bip01 Neck"' in text
     assert '"_bone_weapon01": "Bip01 R Hand"' in text
     assert '"_bone_weapon02": "Bip01 L Hand"' in text
-    assert '"_bone_overhead": "Bip01 Head"' in text
+    assert '"_bone_overhead": "Scene Root"' in text
     assert '"_bone_chest": "Bip01 Spine1"' in text
 
     # Verify Source / Dota 2 naming mappings

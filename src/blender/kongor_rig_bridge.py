@@ -23,7 +23,13 @@ _arp_registered = False
 
 # Standard K2 Engine parent-child DAG hierarchy
 K2_PARENT_RULES = {
-    "Bip01": "Root",
+    # Single-Root DAG: Scene Root (standard K2) or Root
+    "Scene Root": None,
+    "Root": "Scene Root",
+    "Bip01": "Scene Root",
+    "_bone_origin": "Scene Root",
+    "_bone_overhead": "Scene Root",
+    "_bone_center": "Bip01",
     "Bip01 Pelvis": "Bip01",
     "Bip01 Spine": "Bip01 Pelvis",
     "Bip01 Spine1": "Bip01 Spine",
@@ -49,7 +55,7 @@ K2_PARENT_RULES = {
     "Bip01 R Toe0": "Bip01 R Foot",
     "_bone_weapon01": "Bip01 R Hand",
     "_bone_weapon02": "Bip01 L Hand",
-    "_bone_overhead": "Bip01 Head",
+    "_bone_overhead": "Scene Root",
     "_bone_chest": "Bip01 Spine1",
     "_bone_lefteye": "Bip01 Head",
     "_bone_righteye": "Bip01 Head",
@@ -57,10 +63,12 @@ K2_PARENT_RULES = {
 
 # Standard K2 Leaf Sockets Definition: (socket_name, parent_name, offset_xyz)
 K2_SOCKETS_DEF = [
+    ("_bone_origin", "Scene Root", (0.0, 0.0, 0.0)),
+    ("_bone_center", "Bip01", (0.0, 0.0, 0.0)),
+    ("_bone_overhead", "Scene Root", (0.0, 0.0, 0.35)),
+    ("_bone_chest", "Bip01 Spine1", (0.0, 0.15, 0.0)),
     ("_bone_weapon01", "Bip01 R Hand", (0.0, 0.05, 0.0)),
     ("_bone_weapon02", "Bip01 L Hand", (0.0, 0.05, 0.0)),
-    ("_bone_overhead", "Bip01 Head", (0.0, 0.0, 0.35)),
-    ("_bone_chest", "Bip01 Spine1", (0.0, 0.15, 0.0)),
     ("_bone_lefteye", "Bip01 Head", (0.035, 0.08, 0.05)),
     ("_bone_righteye", "Bip01 Head", (-0.035, 0.08, 0.05)),
 ]
@@ -68,10 +76,15 @@ K2_SOCKETS_DEF = [
 # Universal KONGOR Rig / ARP / Mixamo deform names -> K2 standard Bip01 mapping
 KONGOR_RIG_DEFORM_TO_K2 = {
     # Root & Pelvis
-    "c_traj": "Root",
-    "traj": "Root",
-    "root_master": "Root",
-    "root_rotation": "Root",
+    "c_traj": "Scene Root",
+    "traj": "Scene Root",
+    "root_master": "Scene Root",
+    "root_rotation": "Scene Root",
+    "scene root": "Scene Root",
+    "scene_root": "Scene Root",
+    "Scene Root": "Scene Root",
+    "root": "Scene Root",
+    "Root": "Scene Root",
     "root.x": "Bip01",
     "c_root.x": "Bip01",
     "c_pos": "Bip01",
@@ -293,7 +306,7 @@ def is_k2_armature(obj: bpy.types.Object) -> bool:
     if not obj or obj.type != "ARMATURE":
         return False
     bone_names = {b.name for b in obj.data.bones}
-    k2_indicators = {"Root", "Bip01", "Bip01 Pelvis", "Bip01 Spine", "Bip01 Head"}
+    k2_indicators = {"Scene Root", "Root", "Bip01", "Bip01 Pelvis", "Bip01 Spine", "Bip01 Head"}
     return bool(bone_names & k2_indicators) or any(name.startswith("_bone") for name in bone_names)
 
 def get_target_armature(context):
@@ -359,14 +372,22 @@ class KONGOR_OT_conform_k2_hierarchy(Operator):
             bpy.ops.object.mode_set(mode='EDIT')
             ebones = arm_obj.data.edit_bones
 
-            # 1. Root bone at (0, 0, 0)
-            root_b = ebones.get("Root")
+            # 1. Scene Root bone at (0, 0, 0)
+            root_b = ebones.get("Scene Root")
             if not root_b:
-                root_b = ebones.new("Root")
-                root_b.head = (0.0, 0.0, 0.0)
-                root_b.tail = (0.0, 0.1, 0.0)
-                root_b.use_deform = True
+                old_root = ebones.get("Root")
+                if old_root:
+                    old_root.name = "Scene Root"
+                    root_b = old_root
+                else:
+                    root_b = ebones.new("Scene Root")
+                    root_b.head = (0.0, 0.0, 0.0)
+                    root_b.tail = (0.0, 10.0, 0.0)
+                    root_b.use_deform = True
             root_b.parent = None
+            if root_b.length < 1.0:
+                root_b.head = (0.0, 0.0, 0.0)
+                root_b.tail = (0.0, 10.0, 0.0)
 
             # 2. Bip01 (Center-of-mass)
             pelvis_b = ebones.get("Bip01 Pelvis")
@@ -503,7 +524,7 @@ class KONGOR_OT_conform_k2_hierarchy(Operator):
             # 8. Single-Root DAG Integrity (No multiple roots)
             reparented_orphans = 0
             for eb in ebones:
-                if eb.parent is None and eb.name != "Root":
+                if eb.parent is None and eb.name != root_b.name:
                     eb.parent = root_b
                     reparented_orphans += 1
 
@@ -511,7 +532,7 @@ class KONGOR_OT_conform_k2_hierarchy(Operator):
             if orig_active:
                 context.view_layer.objects.active = orig_active
 
-            self.report({"INFO"}, f"Conformed K2 DAG hierarchy on '{arm_obj.name}'. ({reparented_orphans} orphan(s) parented to Root)")
+            self.report({"INFO"}, f"Conformed K2 DAG hierarchy on '{arm_obj.name}'. ({reparented_orphans} orphan(s) parented to {root_b.name})")
             return {"FINISHED"}
         except Exception as e:
             self.report({"ERROR"}, f"Error conforming K2 hierarchy: {e}")
@@ -537,8 +558,10 @@ class KONGOR_OT_add_k2_sockets(Operator):
             ebones = arm_obj.data.edit_bones
 
             # Calculate biped frame for orientation-invariant, properly scaled socket placement
+            root_b = ebones.get("Scene Root") or ebones.get("Root")
             pelvis_b = ebones.get("Bip01 Pelvis") or ebones.get("pelvis")
             head_b = ebones.get("Bip01 Head") or ebones.get("head")
+            bip_b = ebones.get("Bip01")
             r_thigh = ebones.get("Bip01 R Thigh") or ebones.get("thigh.r")
             l_thigh = ebones.get("Bip01 L Thigh") or ebones.get("thigh.l")
 
@@ -562,15 +585,27 @@ class KONGOR_OT_add_k2_sockets(Operator):
 
                 # Fallback parent if specific bone not found
                 if not parent_bone:
-                    if "Hand" in parent_name:
+                    if parent_name == "Scene Root" or parent_name == "Root":
+                        parent_bone = root_b
+                    elif "Hand" in parent_name:
                         parent_bone = ebones.get("Bip01 Spine1") or ebones.get("Bip01 Pelvis")
                     elif "Head" in parent_name:
                         parent_bone = ebones.get("Bip01 Neck") or ebones.get("Bip01 Spine1")
 
                 # Compute standard, human-visible socket coordinates
-                if s_name == "_bone_overhead" and head_b:
-                    target_head = head_b.head + up_dir * (spine_len * 0.75)
-                    target_tail = target_head + up_dir * (spine_len * 0.3)
+                if s_name == "_bone_origin":
+                    parent_bone = root_b
+                    target_head = root_b.head.copy() if root_b else Vector((0.0, 0.0, 0.0))
+                    target_tail = target_head + fwd_dir * (spine_len * 0.15)
+                elif s_name == "_bone_center":
+                    parent_bone = bip_b or root_b
+                    center_ref = bip_b or pelvis_b
+                    target_head = center_ref.head.copy() if center_ref else Vector((0.0, 0.0, 1.0))
+                    target_tail = target_head + fwd_dir * (spine_len * 0.15)
+                elif s_name == "_bone_overhead":
+                    parent_bone = root_b if root_b else head_b
+                    target_head = head_b.head + up_dir * (spine_len * 0.75) if head_b else Vector((0.0, 1.8, 0.0))
+                    target_tail = target_head + up_dir * (spine_len * 0.3) if head_b else Vector((0.0, 2.0, 0.0))
                 elif s_name == "_bone_chest" and parent_bone:
                     target_head = parent_bone.head + fwd_dir * (spine_len * 0.25)
                     target_tail = target_head + fwd_dir * (spine_len * 0.2)
@@ -604,7 +639,7 @@ class KONGOR_OT_add_k2_sockets(Operator):
                 else:
                     if parent_bone and s_bone.parent != parent_bone:
                         s_bone.parent = parent_bone
-                    if s_bone.length < 1.0 or s_name in ("_bone_overhead", "_bone_chest", "_bone_lefteye", "_bone_righteye"):
+                    if s_bone.length < 1.0 or s_name in ("_bone_origin", "_bone_center", "_bone_overhead", "_bone_chest", "_bone_lefteye", "_bone_righteye"):
                         s_bone.head = target_head
                         s_bone.tail = target_tail
                     s_bone.use_deform = True
@@ -737,7 +772,7 @@ class KONGOR_OT_isolate_k2_deform(Operator):
         for b in arm_obj.data.bones:
             name_lower = b.name.lower()
             is_socket = b.name.startswith("_bone_")
-            is_bip = b.name.startswith("Bip01") or b.name == "Root"
+            is_bip = b.name.startswith("Bip01") or b.name in ("Scene Root", "Root")
             is_control = any(name_lower.startswith(p) for p in ("c_", "ik_", "pole", "cont_", "root_", "widget", "mch_", "org_"))
 
             if is_socket or is_bip:
