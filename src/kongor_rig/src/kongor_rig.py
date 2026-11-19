@@ -4,8 +4,8 @@ from bpy.props import *
 from mathutils import *
 from math import *
 from operator import itemgetter
-from . import auto_rig_datas as ard
-from . import auto_rig_reset, rig_functions, mannequin_coords, mannequin_coords_tpose, auto_rig_prefs
+from . import kongor_rig_datas as ard
+from . import kongor_rig_reset, rig_functions, mannequin_coords, mannequin_coords_tpose, kongor_rig_prefs
 from .utils import *
 import gpu
 from gpu_extras.batch import *
@@ -1383,7 +1383,7 @@ class ARP_OT_show_limb_params(Operator):
         if self.limb_type == 'bbones':
             link_limb = 'bendy-bones'+'-options'
 
-        but.link_string = ard.doc_url+'auto_rig.html#'+link_limb
+        but.link_string = ard.doc_url+'kongor_rig.html#'+link_limb
 
         rig = context.active_object
         scn = context.scene
@@ -4870,7 +4870,7 @@ class ARP_OT_save_armature_preset(Operator):
         if self.valid_directory == False:
             layout.label(text="", icon='ERROR')
             layout.label(text="The preset directory doesn't exist yet, where to store preset files?")
-            layout.prop(context.preferences.addons['auto_rig_pro-master'].preferences, "custom_armatures_path", text="Custom Armatures Path")
+            layout.prop(context.preferences.addons[__package__.split('.')[0]].preferences, "custom_armatures_path", text="Custom Armatures Path")
             layout.separator()
         else:
             layout.prop(self, 'armature_name', text='Armature Name')
@@ -6632,7 +6632,7 @@ def _align_spline_limbs():
     bpy.ops.pose.select_all(action='SELECT')
     controllers_saved_transforms = save_pose()
         # reset
-    auto_rig_reset.reset_all()
+    kongor_rig_reset.reset_all()
 
     for side in limb_sides.spline_sides:
         print("  [", side, "]")
@@ -8605,7 +8605,7 @@ def _apply_pose_as_rest(self):
 
     # Reset controllers
     bpy.ops.object.mode_set(mode='POSE')
-    auto_rig_reset.reset_all()
+    kongor_rig_reset.reset_all()
 
     # display the reference bones layer
     _edit_ref()
@@ -9012,7 +9012,7 @@ def _export_data():
 
     # save into file
     addon_directory = os.path.dirname(os.path.abspath(__file__))
-    filepath = addon_directory + "/auto_rig_datas_export.py"
+    filepath = addon_directory + "/kongor_rig_datas_export.py"
 
     file = open(filepath, 'w', encoding='utf8', newline='\n')
     file.write(str(dict))
@@ -11107,7 +11107,7 @@ def _set_transform_constraints():
 
     # get the constraints transform values from file
     addon_directory = os.path.dirname(os.path.abspath(__file__))
-    filepath = addon_directory + "/auto_rig_datas_export.py"
+    filepath = addon_directory + "/kongor_rig_datas_export.py"
     file = open(filepath, 'r') if sys.version_info >= (3, 11) else open(filepath, 'rU')
  
     file_lines = file.readlines()
@@ -11179,7 +11179,7 @@ def _reset_stretches():
     bpy.ops.pose.copy()
     
     # need to reset the pose
-    auto_rig_reset.reset_all()
+    kongor_rig_reset.reset_all()
     
     # reset stretches
     for pbone in bpy.context.active_object.pose.bones:
@@ -25416,7 +25416,7 @@ def _set_inverse():
     bpy.ops.pose.select_all(action='SELECT')
     bpy.ops.pose.copy()
     # reset the pose and child of constraints
-    auto_rig_reset.reset_all()
+    kongor_rig_reset.reset_all()
     # restore the pose
     bpy.ops.pose.paste(flipped=False)
     
@@ -29964,7 +29964,7 @@ def set_spline_ik(amount, type='1', cont_freq=2, interpolation='SMOOTH', bbones_
     bpy.ops.pose.select_all(action='SELECT')
     controllers_saved_transforms = save_pose()
         # reset
-    auto_rig_reset.reset_all()
+    kongor_rig_reset.reset_all()
 
     reset_spline_stretch_ctrl(spline_name, side_arg)
 
@@ -41556,7 +41556,7 @@ class ArpRigPanel:
     bl_category = 'KONGOR Rig'
 
 
-class ARP_PT_auto_rig_pro_panel(Panel, ArpRigPanel):
+class KONGOR_PT_rig_panel(Panel, ArpRigPanel):
     bl_label = 'KONGOR Rig'
     
     def draw_header(self, context):
@@ -41611,11 +41611,11 @@ class ARP_PT_auto_rig_pro_panel(Panel, ArpRigPanel):
             row = row.row()
             but = row.operator("arp.open_link_internet", text='', icon_value=custom_icons['question'].icon_id)
             if scn.arp_active_tab == 'CREATE':
-                but.link_string = ard.doc_url+"auto_rig.html"
+                but.link_string = ard.doc_url+"kongor_rig.html"
             elif scn.arp_active_tab == 'BIND':
-                but.link_string = ard.doc_url+"auto_rig.html#skinning"
+                but.link_string = ard.doc_url+"kongor_rig.html#skinning"
             elif scn.arp_active_tab == 'TOOLS':
-                but.link_string = ard.doc_url+"auto_rig.html#picker-panel"
+                but.link_string = ard.doc_url+"kongor_rig.html#picker-panel"
         
         
         # if locked (Quick Rig Preserve mode), do not show interface, not supposed to be editable
@@ -41739,7 +41739,7 @@ class ARP_PT_auto_rig_pro_panel(Panel, ArpRigPanel):
 
 class ARP_PT_rig_pose(Panel, ArpRigPanel):
     bl_label = "Pose Tools"
-    bl_parent_id = "ARP_PT_auto_rig_pro_panel"
+    bl_parent_id = "KONGOR_PT_rig_panel"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -41789,7 +41789,7 @@ class ARP_PT_rig_pose(Panel, ArpRigPanel):
 
 class ARP_PT_binding_settings(Panel, ArpRigPanel):
     bl_label = "Binding Settings"
-    bl_parent_id = "ARP_PT_auto_rig_pro_panel"
+    bl_parent_id = "KONGOR_PT_rig_panel"
     #bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -41864,7 +41864,7 @@ class ARP_PT_binding_settings(Panel, ArpRigPanel):
 
 class ARP_PT_binding_specials(Panel, ArpRigPanel):
     bl_label = "Facial Features"
-    bl_parent_id = "ARP_PT_auto_rig_pro_panel"
+    bl_parent_id = "KONGOR_PT_rig_panel"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -41941,7 +41941,7 @@ class ARP_PT_binding_specials(Panel, ArpRigPanel):
 
 class ARP_PT_binding_bind(Panel, ArpRigPanel):
     bl_label = "Bind"
-    bl_parent_id = "ARP_PT_auto_rig_pro_panel"
+    bl_parent_id = "KONGOR_PT_rig_panel"
     #bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -41990,7 +41990,7 @@ class ARP_PT_binding_bind(Panel, ArpRigPanel):
 
 class ARP_PT_binding_shapekeys(Panel, ArpRigPanel):
     bl_label = "Shape Keys Tools"
-    bl_parent_id = "ARP_PT_auto_rig_pro_panel"
+    bl_parent_id = "KONGOR_PT_rig_panel"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -42077,7 +42077,7 @@ def insert_draw_sk_menu(self, context):
 
 class ARP_PT_misc(Panel, ArpRigPanel):
     bl_label = "Miscellaneous"
-    bl_parent_id = "ARP_PT_auto_rig_pro_panel"
+    bl_parent_id = "KONGOR_PT_rig_panel"
     #bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -42108,7 +42108,7 @@ class ARP_PT_misc(Panel, ArpRigPanel):
 
 class ARP_PT_misc_picker(Panel, ArpRigPanel):
     bl_label = "Picker Panel"
-    bl_parent_id = "ARP_PT_auto_rig_pro_panel"
+    bl_parent_id = "KONGOR_PT_rig_panel"
     #bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -42152,7 +42152,7 @@ class ARP_PT_misc_picker(Panel, ArpRigPanel):
 
 class ARP_PT_misc_color(Panel, ArpRigPanel):
     bl_label = "Color Theme"
-    bl_parent_id = "ARP_PT_auto_rig_pro_panel"
+    bl_parent_id = "KONGOR_PT_rig_panel"
     #bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -42213,13 +42213,13 @@ classes = (
     ARP_OT_set_character_name, ARP_OT_show_retro_options, ARP_OT_align_wings, ARP_OT_add_muscles, ARP_OT_remove_muscles,
     ARP_OT_add_corrective_bone, ARP_OT_add_corrective_driver, ARP_OT_cancel_corrective_driver, ARP_OT_lines_fx,
     ARP_OT_smart_pick_object, ARP_OT_set_eyelids_borders, ARP_OT_mirror_shape_keys,
-    ARP_OT_bind_VHDS, ARP_PT_auto_rig_pro_panel, ARP_PT_rig_pose, ARP_PT_binding_settings, ARP_PT_binding_specials, ARP_PT_binding_bind, ARP_PT_binding_shapekeys, 
+    ARP_OT_bind_VHDS, KONGOR_PT_rig_panel, ARP_PT_rig_pose, ARP_PT_binding_settings, ARP_PT_binding_specials, ARP_PT_binding_bind, ARP_PT_binding_shapekeys, 
     ARP_PT_misc, ARP_PT_misc_picker, ARP_PT_misc_color, ARP_OT_toggle_action_preserve_pose, ARP_OT_preserve_enable_all_actions, ARP_OT_preserve_disable_all_actions,
     ARP_toggle_lock_rig, ARP_OT_open_link_internet, ARP_OT_remove_corrective_shape, ARP_OT_toggle_action_scale_comp, ARP_MT_menu_append_arp
     )
 
 def update_arp_tab():
-    interface_classes = (ARP_PT_auto_rig_pro_panel, ARP_PT_rig_pose, ARP_PT_binding_settings, ARP_PT_binding_specials, ARP_PT_binding_bind, ARP_PT_binding_shapekeys, ARP_PT_misc, ARP_PT_misc_picker, ARP_PT_misc_color)
+    interface_classes = (KONGOR_PT_rig_panel, ARP_PT_rig_pose, ARP_PT_binding_settings, ARP_PT_binding_specials, ARP_PT_binding_bind, ARP_PT_binding_shapekeys, ARP_PT_misc, ARP_PT_misc_picker, ARP_PT_misc_color)
 
     for cl in reversed(interface_classes):
         try:

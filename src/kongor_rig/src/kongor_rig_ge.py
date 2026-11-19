@@ -4,8 +4,8 @@ from math import degrees, pi, radians, ceil
 from bpy.types import Panel, UIList
 import mathutils
 from mathutils import Vector, Euler, Matrix
-from . import auto_rig_datas as ard
-from . import auto_rig_reset, auto_rig, utils
+from . import kongor_rig_datas as ard
+from . import kongor_rig_reset, kongor_rig, utils
 from .utils import *
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import IntProperty, BoolProperty, FloatProperty, StringProperty, EnumProperty, CollectionProperty, PointerProperty
@@ -331,7 +331,7 @@ class ARP_OT_GE_fix_rig(Operator):
         _fix_rig(self)
         
         mess = "Warning, the following operations were applied:\n-Disabled all possible arms and legs stretches\n-Disabled Preserve Volume on skinned meshes\nThis may somehow change the result, it's recommended to check\nthat animations still look good in the scene, correct them if necessary."  
-        auto_rig.display_popup_message(mess, header='Rig fixed!', icon_type='INFO')
+        kongor_rig.display_popup_message(mess, header='Rig fixed!', icon_type='INFO')
 
         return {'FINISHED'}
 
@@ -429,9 +429,9 @@ class ARP_OT_GE_check_rig(Operator):
 
 
         if len(self.message_final):
-            auto_rig.display_popup_message(self.message_final, header='Some issues were found:', icon_type='ERROR')            
+            kongor_rig.display_popup_message(self.message_final, header='Some issues were found:', icon_type='ERROR')            
         else:
-            auto_rig.display_popup_message("No issues found, ready to export.", header='Passed!', icon_type='INFO')
+            kongor_rig.display_popup_message("No issues found, ready to export.", header='Passed!', icon_type='INFO')
 
         return {'FINISHED'}
 
@@ -911,7 +911,7 @@ def update_ge_presets():
         ARP_MT_ge_import_preset_menu.custom_presets.append(preset_name)
         
         
-limb_sides = auto_rig.Limb_Sides()
+limb_sides = kongor_rig.Limb_Sides()
 
 
 def check_multiple_twist_bones(self):    
@@ -1857,7 +1857,7 @@ class ARP_OT_export(Operator):
                 self.message_final += '\n'
             
             # display
-            #auto_rig.display_popup_message(self.message_final, header='Export Complete!', icon_type='INFO')
+            #kongor_rig.display_popup_message(self.message_final, header='Export Complete!', icon_type='INFO')
             # the report_message() function does display Ok-Cancel button unfortunately, but only way to prevent the popup to close automatically if the cursor has moved
             bpy.ops.arp.report_message('INVOKE_DEFAULT', message=self.message_final, icon_type = 'INFO')
             print(self.message_final)
@@ -2722,7 +2722,7 @@ def init_armatures_scales(armature_name, armature_add_name, self):
     bpy.ops.pose.copy()
 
         #need to reset the pose
-    auto_rig_reset.reset_all()
+    kongor_rig_reset.reset_all()
         #reset constraints
     for pbone in bpy.context.active_object.pose.bones:
         try:
@@ -5463,7 +5463,7 @@ def _set_humanoid_rig(armature_name, armature_add_name, manual_set_debug, self):
     # Store Spline IK (humanoid)
     spline_ik_coords = {}
     for side in limb_sides.spline_sides:
-        spline_name = auto_rig.get_spline_name(side)
+        spline_name = kongor_rig.get_spline_name(side)
         spline_ik_export_to_dict(spline_name, side, spline_ik_coords, sel_bone_names=self.selected_bone_names)
         
     all_extra_coords.update(spline_ik_coords)
@@ -7549,7 +7549,7 @@ def _set_mped_rig(armature_name, armature_add_name, manual_set_debug, self):
         for tside in limb_sides.tail_sides:
             first_tail_name = "c_tail_00" + tside
             if get_data_bone(first_tail_name):             
-                tail_count = auto_rig.get_tail_count(tside)
+                tail_count = kongor_rig.get_tail_count(tside)
 
                 for i in range(0, tail_count):
                     t_idx = '%02d' % i
@@ -7779,7 +7779,7 @@ def _set_mped_rig(armature_name, armature_add_name, manual_set_debug, self):
         
         # Spline IK (mped)
         for side in limb_sides.spline_sides:
-            spline_name = auto_rig.get_spline_name(side)
+            spline_name = kongor_rig.get_spline_name(side)
             spline_ik_export_to_dict(spline_name, side, bones_coords)
 
         # Kilt
@@ -9376,12 +9376,12 @@ def add_k2_sockets(armature_obj=None):
 
 ###########  UI PANEL  ###################
 
-class ARP_PT_auto_rig_GE_panel(Panel):
+class KONGOR_PT_rig_ge_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "KONGOR Rig"
     bl_label = "KONGOR Rig: Export"
-    bl_idname = "ARP_PT_auto_rig_ge"
+    bl_idname = "KONGOR_PT_rig_ge"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -10016,7 +10016,7 @@ class ARP_OT_GE_export_gltf_panel(Operator, ExportHelper):
 
 classes = (ARP_OT_toggle_action, ARP_OT_delete_action, ARP_OT_set_mped_rig, ARP_OT_set_humanoid_rig,
     ARP_OT_unset_export_rig, ARP_OT_export, ARP_OT_bind_humanoid, ARP_OT_unbind_humanoid,
-    ARP_PT_auto_rig_GE_panel, ARP_OT_GE_export_fbx_panel, ARP_OT_GE_export_gltf_panel, ARP_OT_GE_check_rig, ARP_OT_GE_fix_rig,
+    KONGOR_PT_rig_ge_panel, ARP_OT_GE_export_fbx_panel, ARP_OT_GE_export_gltf_panel, ARP_OT_GE_check_rig, ARP_OT_GE_fix_rig,
     ARP_OT_GE_set_custom_bones, ARP_OT_GE_unset_custom_bones, ARP_OT_GE_set_softlink_bones, ARP_OT_GE_unset_softlink_bones,
     ARP_OT_GE_set_const_bones, ARP_OT_GE_unset_const_bones,
     ActionItem, ActionsList, ARP_UL_actions_list, ARP_OT_actions_list_remove, ARP_OT_actions_list_add, ARP_OT_actions_list_move,
@@ -10025,11 +10025,11 @@ classes = (ARP_OT_toggle_action, ARP_OT_delete_action, ARP_OT_set_mped_rig, ARP_
 
 def update_arp_tab():
     try:
-        bpy.utils.unregister_class(ARP_PT_auto_rig_GE_panel)
+        bpy.utils.unregister_class(KONGOR_PT_rig_ge_panel)
     except:
         pass
-    ARP_PT_auto_rig_GE_panel.bl_category = bpy.context.preferences.addons[__package__.split('.')[0]].preferences.arp_tab_name
-    bpy.utils.register_class(ARP_PT_auto_rig_GE_panel)
+    KONGOR_PT_rig_ge_panel.bl_category = bpy.context.preferences.addons[__package__.split('.')[0]].preferences.arp_tab_name
+    bpy.utils.register_class(KONGOR_PT_rig_ge_panel)
 
 def register():
     from bpy.utils import register_class
@@ -10041,7 +10041,7 @@ def register():
     update_ge_presets()
     
     global custom_icons
-    custom_icons = auto_rig.custom_icons
+    custom_icons = kongor_rig.custom_icons
 
     bpy.types.Scene.arp_export_rig_type = EnumProperty(items=(
         ('HUMANOID', 'Humanoid', 'Humanoid rig type, simple bones hierarchy to ensure animation retargetting'),

@@ -2,26 +2,26 @@ import bpy, os, platform
 
 def update_all_tab_names(self, context):
     try:
-        from . import auto_rig
-        auto_rig.update_arp_tab()
+        from . import kongor_rig
+        kongor_rig.update_arp_tab()
     except:
         pass
     
     try:
-        from . import auto_rig_ge
-        auto_rig_ge.update_arp_tab()
+        from . import kongor_rig_ge
+        kongor_rig_ge.update_arp_tab()
     except:
         pass
         
     try:
-        from . import auto_rig_smart
-        auto_rig_smart.update_arp_tab()
+        from . import kongor_rig_smart
+        kongor_rig_smart.update_arp_tab()
     except:
         pass
       
     try:
-        from . import auto_rig_remap
-        auto_rig_remap.update_arp_tab()
+        from . import kongor_rig_remap
+        kongor_rig_remap.update_arp_tab()
     except:
         pass
         

@@ -1,6 +1,6 @@
 import bpy
 import addon_utils                  
-from .. import auto_rig_datas as ard
+from .. import kongor_rig_datas as ard
 from .collections import *
 from .armature import *
 

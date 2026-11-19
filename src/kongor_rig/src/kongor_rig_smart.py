@@ -4,8 +4,8 @@ from math import *
 import mathutils
 from mathutils import *
 from mathutils.bvhtree import BVHTree
-from . import auto_rig_datas as ard
-from . import auto_rig, utils
+from . import kongor_rig_datas as ard
+from . import kongor_rig, utils
 from .utils import *
 from bpy.types import Operator
 from bpy.props import IntProperty, FloatProperty, EnumProperty, StringProperty, BoolProperty, FloatVectorProperty, CollectionProperty
@@ -537,12 +537,12 @@ class ARP_OT_go_detect(Operator):
         
         if append_arp:
             if scn.arp_smart_type == 'BODY':
-                auto_rig._append_arp('human')
+                kongor_rig._append_arp('human')
                 
             elif scn.arp_smart_type == 'FACIAL':             
                 scn.arp_fingers_to_detect = 0
-                auto_rig._append_arp('free')
-                auto_rig._add_limb(self, 'head')
+                kongor_rig._append_arp('free')
+                kongor_rig._add_limb(self, 'head')
 
             self.rig_added = True
             self.overwritten_rig = context.active_object.name
@@ -675,7 +675,7 @@ class ARP_OT_go_detect(Operator):
             context.preferences.edit.use_global_undo = use_global_undo
             
             if self.error_during_auto_detect:
-                auto_rig.display_popup_message(self.error_message, header='Error', icon_type='ERROR')
+                kongor_rig.display_popup_message(self.error_message, header='Error', icon_type='ERROR')
         
         print("Error during detection?", self.error_during_auto_detect)
         return {'FINISHED'}
@@ -1906,7 +1906,7 @@ def _match_ref(self):
 
                 if used_side == ".l":# one side only affect both
                     #disable it by default
-                    auto_rig._disable_limb(self, bpy.context)
+                    kongor_rig._disable_limb(self, bpy.context)
 
 
         # Spine
@@ -1918,7 +1918,7 @@ def _match_ref(self):
         
         if spine_count != 3:
             select_edit_bone(root_ref.name, mode=1)
-            auto_rig.set_spine(count=3, grid_align=True, bottom=False)
+            kongor_rig.set_spine(count=3, grid_align=True, bottom=False)
         
         root_ref = get_edit_bone("root_ref.x")
         root_auto = get_object("root_loc_auto").location
@@ -2025,23 +2025,23 @@ def _match_ref(self):
                 init_selection(hname)
                 
                 if scn.arp_fingers_enable == False:
-                    auto_rig.set_fingers(False, False, False, False, False)
+                    kongor_rig.set_fingers(False, False, False, False, False)
                       
                 if scn.arp_fingers_to_detect == 1:
-                    auto_rig.set_fingers(False, True, False, False, False)
+                    kongor_rig.set_fingers(False, True, False, False, False)
                
                 elif scn.arp_fingers_to_detect == 2:
-                    auto_rig.set_fingers(True, True, False, False, False)
+                    kongor_rig.set_fingers(True, True, False, False, False)
               
                 elif scn.arp_fingers_to_detect == 3:
-                    auto_rig.set_fingers(True, True, True, False, False)
+                    kongor_rig.set_fingers(True, True, True, False, False)
 
                 # If fingers to detect is set to 4, enable all fingers but pinky
                 elif scn.arp_fingers_to_detect == 4:
-                    auto_rig.set_fingers(True, True, True, True, False)
+                    kongor_rig.set_fingers(True, True, True, True, False)
               
                 elif scn.arp_fingers_to_detect == 5:
-                    auto_rig.set_fingers(True, True, True, True, True)
+                    kongor_rig.set_fingers(True, True, True, True, True)
 
 
             # make list of fingers bones
@@ -2223,13 +2223,13 @@ def _match_ref(self):
         facial_markers = ard.facial_markers
 
         # enable ears and facial
-        suffix, found_base = auto_rig.get_next_dupli_id(".l", "ears")
+        suffix, found_base = kongor_rig.get_next_dupli_id(".l", "ears")
         if not found_base:
-            auto_rig.set_ears(2, side_arg=".l")
+            kongor_rig.set_ears(2, side_arg=".l")
         if not get_edit_bone("c_jawbone.x"):
             # make sure the head_ref bone is selected before setting the facial
             get_edit_bone("head_ref.x").select = True
-            auto_rig.set_facial(enable=True)
+            kongor_rig.set_facial(enable=True)
 
         # match
         for bone in facial_markers:
@@ -2518,7 +2518,7 @@ def _match_ref(self):
         bpy.context.active_object.data["arp_chin_loc"] = chin_loc.location[2]
         bpy.context.active_object.data['arp_chin_pos_vec'] = chin_loc.location.copy()
         # Disable facial bones for now
-        auto_rig.set_facial(enable=False)
+        kongor_rig.set_facial(enable=False)
         
 
     # display reference layer only
@@ -2547,7 +2547,7 @@ def _set_skeleton(self):
                 
     # set spine count
     if scn.arp_smart_spine_count != 3 or scn.arp_smart_spine_shape == 'STRAIGHT':
-        auto_rig.set_spine(count=scn.arp_smart_spine_count, grid_align=True, bottom=False)
+        kongor_rig.set_spine(count=scn.arp_smart_spine_count, grid_align=True, bottom=False)
         
     # need to re-get references, set_spine() is switching mode
     neck_ref = get_edit_bone('neck_ref.x')
@@ -2636,13 +2636,13 @@ def _set_skeleton(self):
         
         
     # Neck
-    auto_rig.set_neck(scn.arp_smart_neck_count, twist=True, bendy_segments=1)
+    kongor_rig.set_neck(scn.arp_smart_neck_count, twist=True, bendy_segments=1)
     
     # Twists
-    auto_rig.set_leg_twist(scn.arp_smart_twist_count, '.l', bbones_ease_out=None)
-    auto_rig.set_leg_twist(scn.arp_smart_twist_count, '.r', bbones_ease_out=None)
-    auto_rig.set_arm_twist(scn.arp_smart_twist_count, '.l', bbones_ease_out=None)
-    auto_rig.set_arm_twist(scn.arp_smart_twist_count, '.r', bbones_ease_out=None)
+    kongor_rig.set_leg_twist(scn.arp_smart_twist_count, '.l', bbones_ease_out=None)
+    kongor_rig.set_leg_twist(scn.arp_smart_twist_count, '.r', bbones_ease_out=None)
+    kongor_rig.set_arm_twist(scn.arp_smart_twist_count, '.l', bbones_ease_out=None)
+    kongor_rig.set_arm_twist(scn.arp_smart_twist_count, '.r', bbones_ease_out=None)
     
     #  Shoulders
     shoulder_ref_name = ard.arm_ref_dict['shoulder']
@@ -5438,7 +5438,7 @@ def _get_selected_objects():
         """
         for col in body.users_collection:
 
-            layer_col = auto_rig.search_layer_collection(bpy.context.view_layer.layer_collection, col.name)
+            layer_col = kongor_rig.search_layer_collection(bpy.context.view_layer.layer_collection, col.name)
             if layer_col.hide_viewport == False and col.hide_viewport == False:
                 bpy.context.view_layer.active_layer_collection = layer_col
                 break
@@ -5550,7 +5550,7 @@ class ARP_PT_proxy_utils_ui(bpy.types.Panel):
     bl_region_type = 'UI'
     bl_category = "KONGOR Rig"
     bl_label = "KONGOR Rig: Smart"
-    bl_idname = "ARP_PT_auto_rig_detect"
+    bl_idname = "KONGOR_PT_rig_detect"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -5572,7 +5572,7 @@ class ARP_PT_proxy_utils_ui(bpy.types.Panel):
             row = layout.column().row(align=True).split(factor=0.9)        
             row.label(text="")
             but = row.operator("arp.open_link_internet", text='', icon_value=custom_icons['question'].icon_id)
-            but.link_string = ard.doc_url+"auto_rig.html#smart"
+            but.link_string = ard.doc_url+"kongor_rig.html#smart"
         
         
         button_state = 0
@@ -5872,7 +5872,7 @@ def register():
     update_arp_tab()
     
     global custom_icons
-    custom_icons = auto_rig.custom_icons
+    custom_icons = kongor_rig.custom_icons
 
     bpy.types.Scene.arp_body_name = StringProperty(name="Body name", description = "Get the body object name", options={'HIDDEN'})
     bpy.types.Scene.arp_fingers_to_detect = IntProperty(description = "How many fingers should be found on this model", name = "Fingers Detection", default=5, min=0, max=5, options={'HIDDEN'})

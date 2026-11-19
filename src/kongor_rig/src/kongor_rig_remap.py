@@ -5,7 +5,7 @@ from math import degrees, pi, radians, ceil, sqrt
 from bpy.types import Panel, UIList
 import mathutils
 from mathutils import Vector, Euler, Matrix
-from . import auto_rig
+from . import kongor_rig
 from .utils import *
 
 
@@ -100,7 +100,7 @@ class ARP_OT_remap_export_preset(Operator):
         if self.valid_directory == False:
             layout.label(text="The preset directory is not set yet or doesn't exist,", icon='ERROR')
             layout.label(text="        where to store preset files?")
-            layout.prop(context.preferences.addons['auto_rig_pro-master'].preferences, "remap_presets_path", text="Custom Presets Path")
+            layout.prop(context.preferences.addons[__package__.split('.')[0]].preferences, "remap_presets_path", text="Custom Presets Path")
             
         layout.prop(self, "preset_name", text="Preset Name")
         
@@ -1544,12 +1544,12 @@ def _freeze_armature(arm_type):
             is_arp_armature = True
             
         if is_arp_armature:
-            auto_rig.init_arp_scale(armature.name)
-            auto_rig._reset_stretches()
+            kongor_rig.init_arp_scale(armature.name)
+            kongor_rig._reset_stretches()
             bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
             bpy.ops.object.mode_set(mode='POSE')
-            auto_rig._set_inverse()
+            kongor_rig._set_inverse()
             bpy.ops.object.mode_set(mode='OBJECT')
             return
                 
@@ -4171,12 +4171,12 @@ def update_in_place(self, context):
     
 ###########  UI PANEL  ###################
 
-class ARP_PT_auto_rig_remap_panel(Panel):
+class KONGOR_PT_rig_remap_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "KONGOR Rig"
     bl_label = "KONGOR Rig: Remap"
-    bl_idname = "ARP_PT_auto_rig_remap"
+    bl_idname = "KONGOR_PT_rig_remap"
     bl_options = {'DEFAULT_CLOSED'}
 
 
@@ -4423,17 +4423,17 @@ class ARP_PT_auto_rig_remap_panel(Panel):
 classes = (ARP_OT_clear_tweaks, ARP_OT_synchro_select, ARP_UL_items, ARP_OT_freeze_armature, ARP_OT_redefine_rest_pose, 
 ARP_OT_auto_scale, ARP_OT_apply_offset, ARP_OT_cancel_redefine, ARP_OT_copy_bone_rest, ARP_OT_copy_raw_coordinates, 
 ARP_OT_pick_object, ARP_OT_export_config, ARP_OT_import_config, ARP_OT_retarget, ARP_OT_build_bones_list, BoneRemapSettings, 
-BoneRemapSettingsv2, SourceNodes, ARP_PT_auto_rig_remap_panel, ARP_OT_bind_only, ARP_MT_remap_import, ARP_MT_remap_export, 
+BoneRemapSettingsv2, SourceNodes, KONGOR_PT_rig_remap_panel, ARP_OT_bind_only, ARP_MT_remap_import, ARP_MT_remap_export, 
 ARP_OT_remap_export_preset, ARP_OT_import_config_preset, ARP_OT_save_pose_rest, ARP_OT_batch_retarget,
 ARP_OT_toggle_action_remap, ARP_OT_enable_all_actions, ARP_OT_disable_all_actions, ARP_OT_remap_update)
 
 def update_arp_tab():
     try:
-        bpy.utils.unregister_class(ARP_PT_auto_rig_remap_panel)
+        bpy.utils.unregister_class(KONGOR_PT_rig_remap_panel)
     except:
         pass
-    ARP_PT_auto_rig_remap_panel.bl_category = bpy.context.preferences.addons[__package__.split('.')[0]].preferences.arp_tab_name
-    bpy.utils.register_class(ARP_PT_auto_rig_remap_panel)
+    KONGOR_PT_rig_remap_panel.bl_category = bpy.context.preferences.addons[__package__.split('.')[0]].preferences.arp_tab_name
+    bpy.utils.register_class(KONGOR_PT_rig_remap_panel)
 
 def register():
     from bpy.utils import register_class
@@ -4445,7 +4445,7 @@ def register():
     update_remap_presets()
     
     global custom_icons
-    custom_icons = auto_rig.custom_icons
+    custom_icons = kongor_rig.custom_icons
     
     bpy.types.Scene.target_rig = StringProperty(name = "Target Rig", default="", description="Destination armature to re-target the action", update=update_target_rig, options={'HIDDEN'})
     bpy.types.Scene.source_rig = StringProperty(name = "Source Rig", default="", description="Source rig armature to take action from", update=update_source_rig, options={'HIDDEN'})

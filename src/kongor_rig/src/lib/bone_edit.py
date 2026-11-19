@@ -3,7 +3,7 @@ from math import *
 from mathutils import *
 from .maths_geo import *
 from .collections import *
-from .. import auto_rig_datas as ard
+from .. import kongor_rig_datas as ard
 
 def init_bone_coordinates(edit_bone):
     edit_bone.head = [0,0,0]

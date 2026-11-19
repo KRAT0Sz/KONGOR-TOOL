@@ -4,7 +4,7 @@ from bpy.props import *
 from mathutils import *
 from math import *
 from bpy.app.handlers import persistent
-from . import auto_rig_datas as ard
+from . import kongor_rig_datas as ard
 from . import reset_all_controllers
 from operator import itemgetter
 

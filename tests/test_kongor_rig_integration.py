@@ -10,11 +10,11 @@ def test_kongor_rig_structure_and_presets():
     # Check essential code modules
     src_code_dir = kongor_rig_dir / "src"
     for module_name in [
-        "auto_rig.py",
-        "auto_rig_remap.py",
-        "auto_rig_ge.py",
-        "auto_rig_smart.py",
-        "auto_rig_prefs.py",
+        "kongor_rig.py",
+        "kongor_rig_remap.py",
+        "kongor_rig_ge.py",
+        "kongor_rig_smart.py",
+        "kongor_rig_prefs.py",
         "rig_functions.py",
     ]:
         p = src_code_dir / module_name
@@ -53,28 +53,28 @@ def test_kongor_rig_branding():
     repo_root = pathlib.Path(__file__).parent.parent
     src_dir = repo_root / "src"
     
-    # Check auto_rig.py
-    auto_rig_text = (src_dir / "kongor_rig" / "src" / "auto_rig.py").read_text(encoding="utf-8")
+    # Check kongor_rig.py
+    auto_rig_text = (src_dir / "kongor_rig" / "src" / "kongor_rig.py").read_text(encoding="utf-8")
     assert "bl_label = 'KONGOR Rig'" in auto_rig_text
     assert "bl_category = 'KONGOR Rig'" in auto_rig_text
 
-    # Check auto_rig_smart.py
-    smart_text = (src_dir / "kongor_rig" / "src" / "auto_rig_smart.py").read_text(encoding="utf-8")
+    # Check kongor_rig_smart.py
+    smart_text = (src_dir / "kongor_rig" / "src" / "kongor_rig_smart.py").read_text(encoding="utf-8")
     assert 'bl_label = "KONGOR Rig: Smart"' in smart_text
     assert 'bl_category = "KONGOR Rig"' in smart_text
 
-    # Check auto_rig_remap.py
-    remap_text = (src_dir / "kongor_rig" / "src" / "auto_rig_remap.py").read_text(encoding="utf-8")
+    # Check kongor_rig_remap.py
+    remap_text = (src_dir / "kongor_rig" / "src" / "kongor_rig_remap.py").read_text(encoding="utf-8")
     assert 'bl_label = "KONGOR Rig: Remap"' in remap_text
     assert 'bl_category = "KONGOR Rig"' in remap_text
 
-    # Check auto_rig_ge.py
-    ge_text = (src_dir / "kongor_rig" / "src" / "auto_rig_ge.py").read_text(encoding="utf-8")
+    # Check kongor_rig_ge.py
+    ge_text = (src_dir / "kongor_rig" / "src" / "kongor_rig_ge.py").read_text(encoding="utf-8")
     assert 'bl_label = "KONGOR Rig: Export"' in ge_text
     assert 'bl_category = "KONGOR Rig"' in ge_text
 
-    # Check auto_rig_prefs.py
-    prefs_text = (src_dir / "kongor_rig" / "src" / "auto_rig_prefs.py").read_text(encoding="utf-8")
+    # Check kongor_rig_prefs.py
+    prefs_text = (src_dir / "kongor_rig" / "src" / "kongor_rig_prefs.py").read_text(encoding="utf-8")
     assert "default='KONGOR Rig'" in prefs_text
 
     # Check kongor_rig __init__.py
@@ -111,9 +111,9 @@ def test_k2_bone_structure_and_hierarchy_rules():
     assert "class KONGOR_OT_isolate_k2_deform" in text
     assert "class KONGOR_OT_remap_to_k2_universal" in text
 
-def test_k2_export_pipeline_auto_rig_ge():
+def test_k2_export_pipeline_kongor_rig_ge():
     repo_root = pathlib.Path(__file__).parent.parent
-    ge_file = repo_root / "src" / "kongor_rig" / "src" / "auto_rig_ge.py"
+    ge_file = repo_root / "src" / "kongor_rig" / "src" / "kongor_rig_ge.py"
     assert ge_file.exists()
 
     ge_text = ge_file.read_text(encoding="utf-8")

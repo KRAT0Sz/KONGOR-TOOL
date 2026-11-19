@@ -1,5 +1,5 @@
 import bpy
-from .. import auto_rig_datas as ard
+from .. import kongor_rig_datas as ard
 from .version_arm_collec import *
 
 def remove_bone_from_layer(bone, layer_type):

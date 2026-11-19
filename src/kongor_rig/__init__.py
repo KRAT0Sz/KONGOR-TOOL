@@ -24,7 +24,7 @@ bl_info = {
     "author": "Artell",
     "version": (3, 71, 25),
     "blender": (2, 80, 0),
-    "location": "3D View > Properties> Auto-Rig Pro",
+    "location": "3D View > Properties > KONGOR Rig",
     "description": "Automatic rig generation based on reference bones and various tools",
     "tracker_url": "http://lucky3d.fr/auto-rig-pro/doc/bug_report.html",    
     "doc_url": "http://lucky3d.fr/auto-rig-pro/doc/",
@@ -34,12 +34,12 @@ bl_info = {
 
 import bpy
 from bpy.app.handlers import persistent
-from .src import auto_rig_prefs
+from .src import kongor_rig_prefs
 from .src import rig_functions
-from .src import auto_rig
-from .src import auto_rig_smart
-from .src import auto_rig_remap
-from .src import auto_rig_ge
+from .src import kongor_rig
+from .src import kongor_rig_smart
+from .src import kongor_rig_remap
+from .src import kongor_rig_ge
 if bpy.app.version >= (4,1,0):
     from .src.export_fbx import arp_fbx_init
 else:
@@ -102,9 +102,9 @@ class glTF2ExportUserExtension:
                 original_rig.animation_data.action = bpy.data.actions[blender_action.name + "_%temp"]
                 
 def menu_func_export(self, context):
-    self.layout.operator(auto_rig_ge.ARP_OT_GE_export_fbx_panel.bl_idname, text="KONGOR Rig FBX (.fbx)")
+    self.layout.operator(kongor_rig_ge.ARP_OT_GE_export_fbx_panel.bl_idname, text="KONGOR Rig FBX (.fbx)")
     if bpy.app.version >= (3, 4, 0):
-        self.layout.operator(auto_rig_ge.ARP_OT_GE_export_gltf_panel.bl_idname, text="KONGOR Rig GLTF (.glb/.gltf)")    
+        self.layout.operator(kongor_rig_ge.ARP_OT_GE_export_gltf_panel.bl_idname, text="KONGOR Rig GLTF (.glb/.gltf)")    
     
 
 def cleanse_modules():
@@ -117,22 +117,22 @@ def cleanse_modules():
 
 
 def register():
-    auto_rig_prefs.register()
-    auto_rig.register()
-    auto_rig_smart.register()   
-    auto_rig_remap.register()
-    auto_rig_ge.register()
+    kongor_rig_prefs.register()
+    kongor_rig.register()
+    kongor_rig_smart.register()   
+    kongor_rig_remap.register()
+    kongor_rig_ge.register()
     rig_functions.register()
     arp_fbx_init.register()
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)   
     
 
 def unregister():
-    auto_rig_prefs.unregister()
-    auto_rig.unregister()
-    auto_rig_smart.unregister() 
-    auto_rig_remap.unregister()
-    auto_rig_ge.unregister()
+    kongor_rig_prefs.unregister()
+    kongor_rig.unregister()
+    kongor_rig_smart.unregister() 
+    kongor_rig_remap.unregister()
+    kongor_rig_ge.unregister()
     rig_functions.unregister()
     arp_fbx_init.unregister()
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)        
