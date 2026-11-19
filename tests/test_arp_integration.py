@@ -49,3 +49,41 @@ def test_package_extension_includes_arp():
     # Verify arp files glob correctly
     arp_files = [f for f in arp_dir.rglob("*") if f.is_file() and not any(p in ("__pycache__", ".vscode") for p in f.parts) and f.suffix not in (".pyc", ".pyo")]
     assert len(arp_files) > 30, f"Expected >30 ARP files, found {len(arp_files)}"
+
+def test_kongor_rig_branding():
+    repo_root = pathlib.Path(__file__).parent.parent
+    src_dir = repo_root / "src"
+    
+    # Check auto_rig.py
+    auto_rig_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig.py").read_text(encoding="utf-8")
+    assert "bl_label = 'KONGOR Rig'" in auto_rig_text
+    assert "bl_category = 'KONGOR Rig'" in auto_rig_text
+
+    # Check auto_rig_smart.py
+    smart_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig_smart.py").read_text(encoding="utf-8")
+    assert 'bl_label = "KONGOR Rig: Smart"' in smart_text
+    assert 'bl_category = "KONGOR Rig"' in smart_text
+
+    # Check auto_rig_remap.py
+    remap_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig_remap.py").read_text(encoding="utf-8")
+    assert 'bl_label = "KONGOR Rig: Remap"' in remap_text
+    assert 'bl_category = "KONGOR Rig"' in remap_text
+
+    # Check auto_rig_ge.py
+    ge_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig_ge.py").read_text(encoding="utf-8")
+    assert 'bl_label = "KONGOR Rig: Export"' in ge_text
+    assert 'bl_category = "KONGOR Rig"' in ge_text
+
+    # Check auto_rig_prefs.py
+    prefs_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig_prefs.py").read_text(encoding="utf-8")
+    assert "default='KONGOR Rig'" in prefs_text
+
+    # Check auto_rig_pro __init__.py
+    init_text = (src_dir / "auto_rig_pro" / "__init__.py").read_text(encoding="utf-8")
+    assert '"name": "KONGOR Rig"' in init_text
+    assert 'text="KONGOR Rig FBX (.fbx)"' in init_text
+
+    # Check blender ui_panels.py
+    ui_text = (src_dir / "blender" / "ui_panels.py").read_text(encoding="utf-8")
+    assert 'bl_label = "KONGOR Rig"' in ui_text
+    assert 'text="KONGOR Rig Tools"' in ui_text

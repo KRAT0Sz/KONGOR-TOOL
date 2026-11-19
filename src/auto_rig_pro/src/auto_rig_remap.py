@@ -37,7 +37,7 @@ class ARP_MT_remap_import(Menu):
     
     def draw(self, _context):
         layout = self.layout
-        layout.operator("arp.import_config_preset", text="Auto-Rig Pro (FK Arms, IK Legs)").preset_name = "arp"
+        layout.operator("arp.import_config_preset", text="KONGOR Rig (FK Arms, IK Legs)").preset_name = "arp"
         layout.operator("arp.import_config_preset", text="Character Creator (FK Arms, IK Legs)").preset_name = "character_creator"
         layout.operator("arp.import_config_preset", text="DAZ (FK Arms, IK Legs)").preset_name = "daz"
         layout.operator("arp.import_config_preset", text="DeepMotion (FK Arms, IK Legs)").preset_name = "deepmotion"
@@ -4174,8 +4174,8 @@ def update_in_place(self, context):
 class ARP_PT_auto_rig_remap_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "ARP"
-    bl_label = "Auto-Rig Pro: Remap"
+    bl_category = "KONGOR Rig"
+    bl_label = "KONGOR Rig: Remap"
     bl_idname = "ARP_PT_auto_rig_remap"
     bl_options = {'DEFAULT_CLOSED'}
 

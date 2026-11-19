@@ -9138,8 +9138,8 @@ def rename_for_godot():
 class ARP_PT_auto_rig_GE_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "ARP"
-    bl_label = "Auto-Rig Pro: Export"
+    bl_category = "KONGOR Rig"
+    bl_label = "KONGOR Rig: Export"
     bl_idname = "ARP_PT_auto_rig_ge"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -9708,7 +9708,7 @@ class ARP_OT_GE_export_fbx_panel(Operator, ExportHelper):
     """Export the rigged character in Fbx file format"""
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_label = 'Auto-Rig Pro FBX Export'
+    bl_label = 'KONGOR Rig FBX Export'
     bl_idname = 'arp.arp_export_fbx_panel'
     
     export_format = 'FBX'
@@ -9736,7 +9736,7 @@ class ARP_OT_GE_export_gltf_panel(Operator, ExportHelper):
     """Export the rigged character in Gltf/Glb file format\nRequires Blender 3.4 and higher"""
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_label = "Auto-Rig Pro GLTF Export"
+    bl_label = "KONGOR Rig GLTF Export"
     bl_idname = "arp.arp_export_gltf_panel"
 
     export_format = 'GLTF'

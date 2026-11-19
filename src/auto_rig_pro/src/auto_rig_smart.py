@@ -5548,8 +5548,8 @@ class facial_markers_transform(bpy.types.PropertyGroup):
 class ARP_PT_proxy_utils_ui(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "ARP"
-    bl_label = "Auto-Rig Pro: Smart"
+    bl_category = "KONGOR Rig"
+    bl_label = "KONGOR Rig: Smart"
     bl_idname = "ARP_PT_auto_rig_detect"
     bl_options = {'DEFAULT_CLOSED'}
 

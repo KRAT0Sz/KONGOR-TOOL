@@ -41,7 +41,7 @@ def get_documents_path(other_folder):
     else:
         documents = os.path.join(home, "Documents")
     
-    p = os.path.join(documents, 'AutoRigPro')
+    p = os.path.join(documents, 'KONGOR Rig')
     p = os.path.join(p, other_folder)
     
     return p
@@ -49,7 +49,7 @@ def get_documents_path(other_folder):
 
 class ARP_MT_arp_addon_preferences(bpy.types.AddonPreferences):
     bl_idname = __package__.split('.')[0]
-    arp_tab_name : bpy.props.StringProperty(name='Interface Tab', description='Name of the tab to display the interface in', default='ARP', update=update_all_tab_names)
+    arp_tab_name : bpy.props.StringProperty(name='Interface Tab', description='Name of the tab to display the interface in', default='KONGOR Rig', update=update_all_tab_names)
     arp_tools_tab_name : bpy.props.StringProperty(name='Tools Interface Tab', description='Name of the tab to display the tools (IK-FK snap...) interface in', default='Tool', update=update_all_tab_names)
     
     beginner_mode: bpy.props.BoolProperty(name='Beginner Mode', default=True)

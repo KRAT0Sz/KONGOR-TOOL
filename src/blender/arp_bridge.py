@@ -62,9 +62,9 @@ def is_k2_armature(obj: bpy.types.Object) -> bool:
 
 class KongorARPBridgeSettings(PropertyGroup):
     target_arp_rig: PointerProperty(
-        name="ARP Rig",
+        name="KONGOR Rig",
         type=bpy.types.Object,
-        description="Target Auto-Rig Pro generated control rig",
+        description="Target KONGOR Rig control armature",
         poll=lambda self, obj: obj.type == "ARMATURE" and not is_k2_armature(obj),
     )
     source_k2_rig: PointerProperty(
@@ -88,10 +88,10 @@ class KongorARPBridgeSettings(PropertyGroup):
     )
 
 class KONGOR_OT_arp_bind(Operator):
-    """Constrain K2 Deform Armature to Auto-Rig Pro Deform/Control bones for live animation"""
+    """Constrain K2 Deform Armature to KONGOR Rig controls for live animation"""
     bl_idname = "kongor.arp_bind"
-    bl_label = "Bind K2 to ARP Rig"
-    bl_description = "Add Copy Transforms constraints linking K2 deform bones to Auto-Rig Pro controllers"
+    bl_label = "Bind K2 to KONGOR Rig"
+    bl_description = "Add Copy Transforms constraints linking K2 deform bones to KONGOR Rig controllers"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
@@ -152,13 +152,13 @@ class KONGOR_OT_arp_bind(Operator):
                 c.target_space = "WORLD"
                 bound_count += 1
 
-        self.report({"INFO"}, f"Bound {bound_count} K2 bone(s) to ARP Rig '{arp_arm.name}'")
+        self.report({"INFO"}, f"Bound {bound_count} K2 bone(s) to KONGOR Rig '{arp_arm.name}'")
         return {"FINISHED"}
 
 class KONGOR_OT_arp_unbind(Operator):
     """Remove live follow constraints from K2 Deform Armature"""
     bl_idname = "kongor.arp_unbind"
-    bl_label = "Unbind K2 Rig"
+    bl_label = "Unbind K2 Armature"
     bl_description = "Remove all follow constraints from K2 deform bones"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -176,14 +176,14 @@ class KONGOR_OT_arp_unbind(Operator):
             if c:
                 pbone.constraints.remove(c)
                 count += 1
-        self.report({"INFO"}, f"Removed K2-ARP constraints from {count} bone(s)")
+        self.report({"INFO"}, f"Removed KONGOR Rig constraints from {count} bone(s)")
         return {"FINISHED"}
 
 class KONGOR_OT_arp_bake(Operator):
-    """Bake animation from ARP control rig directly onto K2 Armature for game-ready export"""
+    """Bake animation from KONGOR Rig directly onto K2 Armature for game-ready export"""
     bl_idname = "kongor.arp_bake"
-    bl_label = "Bake ARP to K2 Armature"
-    bl_description = "Bake visual transforms from Auto-Rig Pro rig into K2 game skeleton keyframes"
+    bl_label = "Bake KONGOR Rig to K2 Skeleton"
+    bl_description = "Bake visual transforms from KONGOR Rig into K2 game skeleton keyframes"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod

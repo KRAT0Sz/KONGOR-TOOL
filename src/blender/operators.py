@@ -379,9 +379,9 @@ class KONGOR_OT_dialog(bpy.types.Operator):
             if act.kongor.mesh_type == "NORMAL":
                 mesh_box.prop(act.kongor, "bonelink")
 
-        # 3. K2 Rig Creator & Skeleton Section
+        # 3. KONGOR Rig & Game Armature Tools
         rig_k2_box = layout.box()
-        rig_k2_box.label(text="K2 Rig Creator & Rigging:", icon="ARMATURE_DATA")
+        rig_k2_box.label(text="KONGOR Rig & Game Armature:", icon="ARMATURE_DATA")
         row_k2 = rig_k2_box.row(align=True)
         row_k2.operator("kongor.add_k2_rig", text="Add K2 Game Rig", icon="OUTLINER_OB_ARMATURE")
         row_k2.operator("kongor.setup_k2_deform", text="Prepare for K2", icon="CHECKMARK")
@@ -389,13 +389,13 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         row_remap.operator("kongor.remap_to_k2", text="Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
         row_remap.operator("kongor.remap_to_k2", text="To Rig Creator (def_)", icon="SYNTAX_OFF").reverse = True
 
-        # 4. Auto-Rig Pro (ARP) & K2 Bridge Section
+        # 4. KONGOR Rig Pipeline Section
         arp_box = layout.box()
-        arp_box.label(text="Auto-Rig Pro & K2 Bridge:", icon="POSE_HLT")
+        arp_box.label(text="KONGOR Rig Pipeline:", icon="POSE_HLT")
         if hasattr(context.scene, "kongor_arp"):
             arp_settings = context.scene.kongor_arp
             col_arp = arp_box.column(align=True)
-            col_arp.prop(arp_settings, "target_arp_rig", text="Target ARP Rig")
+            col_arp.prop(arp_settings, "target_arp_rig", text="Target KONGOR Rig")
             col_arp.prop(arp_settings, "source_k2_rig", text="Source K2 Armature")
             row_arp_range = col_arp.row(align=True)
             row_arp_range.prop(arp_settings, "bake_frame_start", text="Start")
@@ -404,10 +404,10 @@ class KONGOR_OT_dialog(bpy.types.Operator):
 
             row_arp_ops = arp_box.row(align=True)
             row_arp_ops.operator("kongor.arp_apply_k2_preset", text="Load K2 Preset (.bmap)", icon="PRESET")
-            row_arp_ops.operator("kongor.arp_bind", text="Bind K2 to ARP", icon="CONSTRAINT_BONE")
+            row_arp_ops.operator("kongor.arp_bind", text="Bind K2 to Rig", icon="CONSTRAINT_BONE")
             row_arp_ops.operator("kongor.arp_unbind", text="Unbind", icon="X")
 
-            arp_box.operator("kongor.arp_bake", text="Bake ARP Animation to K2 Skeleton", icon="ACTION")
+            arp_box.operator("kongor.arp_bake", text="Bake KONGOR Rig to K2 Skeleton", icon="ACTION")
 
         # 5. Skeleton & Bones Display Section
         rig_box = layout.box()

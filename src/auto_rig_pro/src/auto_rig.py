@@ -41553,11 +41553,11 @@ def update_show_ik_lines(self, context):
 class ArpRigPanel:
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'ARP'
+    bl_category = 'KONGOR Rig'
 
 
 class ARP_PT_auto_rig_pro_panel(Panel, ArpRigPanel):
-    bl_label = 'Auto-Rig Pro'
+    bl_label = 'KONGOR Rig'
     
     def draw_header(self, context):
         self.layout.label(text='', icon_value=custom_icons['arp'].icon_id)

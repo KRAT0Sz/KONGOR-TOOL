@@ -20,7 +20,7 @@
 import os, shutil
     
 bl_info = {
-    "name": "Auto-Rig Pro",
+    "name": "KONGOR Rig",
     "author": "Artell",
     "version": (3, 71, 25),
     "blender": (2, 80, 0),
@@ -102,9 +102,9 @@ class glTF2ExportUserExtension:
                 original_rig.animation_data.action = bpy.data.actions[blender_action.name + "_%temp"]
                 
 def menu_func_export(self, context):
-    self.layout.operator(auto_rig_ge.ARP_OT_GE_export_fbx_panel.bl_idname, text="Auto-Rig Pro FBX (.fbx)")
+    self.layout.operator(auto_rig_ge.ARP_OT_GE_export_fbx_panel.bl_idname, text="KONGOR Rig FBX (.fbx)")
     if bpy.app.version >= (3, 4, 0):
-        self.layout.operator(auto_rig_ge.ARP_OT_GE_export_gltf_panel.bl_idname, text="Auto-Rig Pro GLTF (.glb/.gltf)")    
+        self.layout.operator(auto_rig_ge.ARP_OT_GE_export_gltf_panel.bl_idname, text="KONGOR Rig GLTF (.glb/.gltf)")    
     
 
 def cleanse_modules():
