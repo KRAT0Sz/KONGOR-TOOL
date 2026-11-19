@@ -54,6 +54,11 @@ class KongorModelExportSettings(bpy.types.PropertyGroup):
         description="Write companion K2 Model Definition File (.mdf)",
         default=True,
     )
+    export_deform_only: BoolProperty(
+        name="Export Deform Bones Only",
+        description="Export only deforming bones (skips IK controls, helpers, and widgets). Essential for Rig Creator and game rigs",
+        default=True,
+    )
 
 class KongorClipSettings(bpy.types.PropertyGroup):
     frame_start: IntProperty(
@@ -71,6 +76,11 @@ class KongorClipSettings(bpy.types.PropertyGroup):
         description="Target framerate for animation playback",
         default=30,
         min=1,
+    )
+    export_deform_only: BoolProperty(
+        name="Export Deform Bones Only",
+        description="Export only deforming bones (skips IK controls). Bakes evaluated constraint motions into K2 clip channels",
+        default=True,
     )
 
 class KongorObjectSettings(bpy.types.PropertyGroup):

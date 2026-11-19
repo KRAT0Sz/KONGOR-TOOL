@@ -69,14 +69,25 @@ def export_k2_model_file(
     bone_name_to_index: Dict[str, int] = {}
 
     if armature_obj:
-        arm_bones = armature_obj.data.bones
+        export_deform_only = getattr(settings, "export_deform_only", True) if settings else True
+        has_non_deform = any(not b.use_deform for b in armature_obj.data.bones)
+
+        if export_deform_only and has_non_deform:
+            arm_bones = [b for b in armature_obj.data.bones if b.use_deform]
+        else:
+            arm_bones = list(armature_obj.data.bones)
+
         for idx, b in enumerate(arm_bones):
             bone_name_to_index[b.name] = idx
 
         for idx, b in enumerate(arm_bones):
             parent_idx = -1
-            if b.parent and b.parent.name in bone_name_to_index:
-                parent_idx = bone_name_to_index[b.parent.name]
+            p = b.parent
+            while p:
+                if p.name in bone_name_to_index:
+                    parent_idx = bone_name_to_index[p.name]
+                    break
+                p = p.parent
 
             # In K2 Engine: base is bone world rest matrix (3x4), inv_base is its inverse
             m = b.matrix_local
@@ -176,7 +187,9 @@ def export_k2_model_file(
         raw_faces: List[Tuple[int, int, int]] = []
 
         uv_layer = temp_mesh.uv_layers.active.data if temp_mesh.uv_layers.active else None
-        col_layer = temp_mesh.color_attributes.active.data if temp_mesh.color_attributes.active else None
+        col_attr = temp_mesh.color_attributes.active if temp_mesh.color_attributes else None
+        col_domain = col_attr.domain if col_attr else None
+        col_layer = col_attr.data if col_attr else None
 
         loop_counter = 0
         for poly in temp_mesh.polygons:
@@ -191,19 +204,22 @@ def export_k2_model_file(
                 overall_bbox.add_point(pos)
 
                 uvs: List[Tuple[float, float]] = []
-                if uv_layer:
+                if uv_layer and loop_idx < len(uv_layer):
                     u, v_coord = uv_layer[loop_idx].uv
                     uvs.append((u, (1.0 - v_coord) if flip_v else v_coord))
 
                 colors: List[Tuple[int, int, int, int]] = []
                 if col_layer:
-                    c = col_layer[loop_idx].color
-                    colors.append((
-                        int(c[0] * 255),
-                        int(c[1] * 255),
-                        int(c[2] * 255),
-                        int(c[3] * 255) if len(c) > 3 else 255
-                    ))
+                    c_idx = loop_idx if col_domain == "CORNER" else v_idx
+                    if c_idx < len(col_layer):
+                        elem = col_layer[c_idx]
+                        c = getattr(elem, "color", None) or getattr(elem, "vector", (1.0, 1.0, 1.0, 1.0))
+                        colors.append((
+                            int(c[0] * 255),
+                            int(c[1] * 255),
+                            int(c[2] * 255),
+                            int(c[3] * 255) if len(c) > 3 else 255
+                        ))
 
                 # Extract bone weights
                 weights: List[Tuple[int, float]] = []
@@ -344,9 +360,25 @@ def export_k2_clip_file(
     frame_end = getattr(settings, "frame_end", context.scene.frame_end) if settings else context.scene.frame_end
     num_frames = max(1, frame_end - frame_start + 1)
 
-    arm_bones = armature_obj.data.bones
+    export_deform_only = getattr(settings, "export_deform_only", True) if settings else True
+    has_non_deform = any(not b.use_deform for b in armature_obj.data.bones)
+
+    if export_deform_only and has_non_deform:
+        arm_bones = [b for b in armature_obj.data.bones if b.use_deform]
+    else:
+        arm_bones = list(armature_obj.data.bones)
+
     if not arm_bones:
         return False, "Armature contains no bones to animate."
+
+    # Precompute exported parent for each bone (bypassing non-deform control bones)
+    exported_names = {b.name for b in arm_bones}
+    bone_to_exported_parent: Dict[str, Optional[bpy.types.Bone]] = {}
+    for b in arm_bones:
+        p = b.parent
+        while p and p.name not in exported_names:
+            p = p.parent
+        bone_to_exported_parent[b.name] = p
 
     # Backup current frame
     orig_frame = context.scene.frame_current
@@ -365,9 +397,14 @@ def export_k2_clip_file(
                 if not pb:
                     continue
 
-                # Relative pose matrix to parent
-                if pb.parent:
-                    rel_mat = pb.parent.matrix.inverted() @ pb.matrix
+                # Relative pose matrix to exported parent (bakes evaluated IK, drivers, and constraints)
+                exp_parent = bone_to_exported_parent.get(b.name)
+                if exp_parent:
+                    pb_parent = armature_obj.pose.bones.get(exp_parent.name)
+                    if pb_parent:
+                        rel_mat = pb_parent.matrix.inverted() @ pb.matrix
+                    else:
+                        rel_mat = pb.matrix
                 else:
                     rel_mat = pb.matrix
 
