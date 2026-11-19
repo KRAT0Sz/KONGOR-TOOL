@@ -90,6 +90,43 @@ def test_s2_material_specification():
     assert parsed.mrao_texture == "textures/mrao.tga"
     assert len(parsed.phases) == 3
 
+def test_hon_pbt_material_specification():
+    """Verifies native Heroes of Newerth x64 PBT (Project Bradley) S2 material generation."""
+    mat = K2Material(
+        name="",
+        target_engine="HON_PBT",
+        vDiffuseColor="1.0000 1.0000 1.0000",
+        fSpecularLevel="1.0000",
+        fGlossiness="56",
+        fOpacity="1.0000",
+        fReflect="1.0000",
+        diffuse_texture="color.tga",
+        normal_texture="normal.tga",
+        specular_texture="spec_color.tga",
+        team_texture="team.tga",
+        lightmap_texture="glow.tga",
+    )
+    xml_str = write_material_xml(mat, target_engine="HON_PBT")
+    assert '<?xml version="1.0" encoding="UTF-8"?>' in xml_str
+    assert '<material>' in xml_str
+    assert '<parameters vDiffuseColor="1.0000 1.0000 1.0000" fSpecularLevel="1.0000" fGlossiness="56" fOpacity="1.0000" fReflect="1.0000" />' in xml_str
+    assert '<phase name="shadow" vs="mesh_shadow_opacity" ps="mesh_shadow_opacity"' in xml_str
+    assert '<sampler name="opacity" texture="color.tga"' in xml_str
+    assert '<phase name="depth" vs="mesh_depth_opacity" ps="mesh_depth_opacity"' in xml_str
+    assert '<phase name="color" vs="mesh_color_unit" ps="mesh_color_unit_team_lightmap_spec"' in xml_str
+    assert '<sampler name="diffuse" texture="color.tga"' in xml_str
+    assert '<sampler name="normalmap" texture="normal.tga"' in xml_str
+    assert '<sampler name="specular" texture="spec_color.tga"' in xml_str
+    assert '<sampler name="team" texture="team.tga"' in xml_str
+    assert '<sampler name="lightmap" texture="glow.tga"' in xml_str
+    assert '<phase name="fade" vs="mesh_depth_opacity" ps="mesh_depth_opacity"' in xml_str
+    assert '<multipass vs="mesh_color_unit" ps="mesh_color_unit_team_lightmap_spec"' in xml_str
+
+    parsed = read_material_xml(xml_str)
+    assert parsed.diffuse_texture == "color.tga"
+    assert parsed.normal_texture == "normal.tga"
+    assert len(parsed.phases) == 4
+
 def test_s2_mdf_skin_specification():
     """Verifies S2Exporter-compliant .mdf skin and model attributes."""
     mdf = K2ModelDefinition(

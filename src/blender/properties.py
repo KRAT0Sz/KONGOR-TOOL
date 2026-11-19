@@ -7,6 +7,7 @@ Clean Architecture without legacy baggage.
 import bpy
 from bpy.props import (
     BoolProperty,
+    EnumProperty,
     IntProperty,
     PointerProperty,
 )
@@ -34,6 +35,15 @@ class KongorModelImportSettings(bpy.types.PropertyGroup):
     )
 
 class KongorModelExportSettings(bpy.types.PropertyGroup):
+    target_engine: EnumProperty(
+        name="Project KONGOR",
+        description="Select HoN engine target and material shader format",
+        items=[
+            ("HON_PBT", "HoN x64 PBT (Classic S2)", "Heroes of Newerth x64 PBT (Project Bradley) native classic shaders"),
+            ("HON_REBORN", "HoN Reborn (PBR)", "Heroes of Newerth Reborn modern PBR shaders"),
+        ],
+        default="Project KONGOR",
+    )
     flip_v: BoolProperty(
         name="Flip UV (V-Axis)",
         description="Invert V texture coordinate (1.0 - V) for K2 Engine standard",
@@ -45,12 +55,12 @@ class KongorModelExportSettings(bpy.types.PropertyGroup):
         default=True,
     )
     export_materials: BoolProperty(
-        name="Generate .material XML",
+        name="Generate .material",
         description="Write companion K2 XML .material files for each exported mesh",
         default=True,
     )
     export_mdf: BoolProperty(
-        name="Generate .mdf XML",
+        name="Generate .mdf",
         description="Write companion K2 Model Definition File (.mdf)",
         default=True,
     )
@@ -103,12 +113,12 @@ class KONGOR_AddonPreferences(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
         box = layout.box()
-        box.label(text="KONGOR TOOL (v5.0.0)", icon="TOOL_SETTINGS")
+        box.label(text="KONGOR TOOL v5.0.0", icon="TOOL_SETTINGS")
         box.label(text="Heroes of Newerth K2 Engine Model & Animation (.model / .clip) Tool")
         box.separator()
         row = box.row()
         row.alert = True
-        row.operator("kongor.uninstall", text="Uninstall KONGOR TOOL", icon="TRASH")
+        row.operator("kongor.uninstall", text="Uninstall", icon="TRASH")
 
 classes = (
     KongorModelImportSettings,

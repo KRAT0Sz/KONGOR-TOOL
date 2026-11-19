@@ -21,6 +21,17 @@ class KONGOR_OT_import_model(bpy.types.Operator, ImportHelper):
     filename_ext = ".model"
     filter_glob: StringProperty(default="*.model", options={"HIDDEN"})
 
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.kongor_export
+        box = layout.box()
+        box.label(text="Export Options", icon="EXPORT")
+        box.prop(settings, "target_engine")
+        box.prop(settings, "apply_modifiers")
+        box.prop(settings, "export_deform_only")
+        box.prop(settings, "export_materials")
+        box.prop(settings, "export_mdf")
+
     def execute(self, context):
         settings = context.scene.kongor_import
         try:
@@ -45,6 +56,17 @@ class KONGOR_OT_export_model(bpy.types.Operator, ExportHelper):
 
     filename_ext = ".model"
     filter_glob: StringProperty(default="*.model", options={"HIDDEN"})
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.kongor_export
+        box = layout.box()
+        box.label(text="Export Options", icon="EXPORT")
+        box.prop(settings, "target_engine")
+        box.prop(settings, "apply_modifiers")
+        box.prop(settings, "export_deform_only")
+        box.prop(settings, "export_materials")
+        box.prop(settings, "export_mdf")
 
     def execute(self, context):
         settings = context.scene.kongor_export
@@ -340,6 +362,7 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         col.prop(settings_imp, "flip_v")
         col.prop(settings_imp, "bones_in_front")
         col.prop(settings_imp, "show_bone_names")
+        col.prop(settings_exp, "target_engine")
         col.prop(settings_exp, "apply_modifiers")
         col.prop(settings_exp, "export_materials")
         col.prop(settings_exp, "export_mdf")

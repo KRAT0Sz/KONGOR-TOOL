@@ -84,10 +84,14 @@ def _looks_like_tex_type(text: str, tex_type: str) -> bool:
         return any(k in text for k in ('color', 'diff', 'diffuse', 'albedo', 'base'))
     if tex_type == 'normal':
         return any(k in text for k in ('normal', 'norm', 'nrm', 'bump'))
+    if tex_type == 'specular':
+        return any(k in text for k in ('spec', 'specular', 'spec_color'))
+    if tex_type == 'team':
+        return 'team' in text
+    if tex_type == 'lightmap':
+        return any(k in text for k in ('glow', 'lightmap', 'emissive', 'emis', 'self'))
     if tex_type == 'mrao':
-        return any(k in text for k in ('mrao', 'orm', 'spec', 'rough', 'metal', 'gloss'))
-    if tex_type == 'emissive':
-        return any(k in text for k in ('emissive', 'emis', 'glow', 'self'))
+        return any(k in text for k in ('mrao', 'orm', 'rough', 'metal', 'gloss'))
     return False
 
 def _resolve_material_textures(mat: Optional[bpy.types.Material], export_dir: str = "") -> Dict[str, str]:
@@ -104,7 +108,7 @@ def _resolve_material_textures(mat: Optional[bpy.types.Material], export_dir: st
         filename = os.path.basename(image_path).lower()
         label = (node.label or node.name or "").lower()
         search_text = f"{label} {filename}"
-        for tex_type in ('color', 'normal', 'mrao', 'emissive'):
+        for tex_type in ('color', 'normal', 'specular', 'team', 'lightmap', 'mrao'):
             if tex_type in textures:
                 continue
             if _looks_like_tex_type(search_text, tex_type):
@@ -134,6 +138,7 @@ def export_k2_model_file(
     apply_modifiers = getattr(settings, "apply_modifiers", True) if settings else True
     export_materials = getattr(settings, "export_materials", True) if settings else True
     export_mdf = getattr(settings, "export_mdf", True) if settings else True
+    target_engine = getattr(settings, "target_engine", "HON_PBT") if settings else "HON_PBT"
 
     # 1. Locate Primary Armature
     armature_obj = None
@@ -427,46 +432,73 @@ def export_k2_model_file(
 
             resolved_tex = _resolve_material_textures(mat, model_dir)
             idx_suffix = "" if stem == "material" else stem.replace("material", "")
-            def_diffuse = f"textures/color{idx_suffix}.tga" if stem.startswith("material") else f"textures/{stem}_color.tga"
-            def_normal = f"textures/normal{idx_suffix}.tga" if stem.startswith("material") else f"textures/{stem}_normal.tga"
-            def_mrao = f"textures/mrao{idx_suffix}.tga" if stem.startswith("material") else f"textures/{stem}_mrao.tga"
 
-            diffuse_path = resolved_tex.get("color") or def_diffuse
-            normal_path = resolved_tex.get("normal") or def_normal
-            mrao_path = resolved_tex.get("mrao") or def_mrao
+            if target_engine == "HON_PBT":
+                def_diffuse = f"color{idx_suffix}.tga" if stem.startswith("material") else f"{stem}_color.tga"
+                def_normal = f"normal{idx_suffix}.tga" if stem.startswith("material") else f"{stem}_normal.tga"
+                def_specular = f"spec_color{idx_suffix}.tga" if stem.startswith("material") else f"{stem}_spec.tga"
 
-            k2_mat = K2Material(
-                name="",
-                shader="/shared/shaders/heroes/hero_diffuse_normal_mrao_team_envmap_tinted.shader",
-                vDiffuseColor="1 1 1",
-                fSpecularLevel="1.5",
-                fGlossiness="32",
-                fOpacity="1.0",
-                diffuse_texture=diffuse_path,
-                normal_texture=normal_path,
-                mrao_texture=mrao_path,
-                cube_texture="/world/sky/panorama/1.tga",
-            )
+                k2_mat = K2Material(
+                    name="",
+                    target_engine="HON_PBT",
+                    vDiffuseColor="1.0000 1.0000 1.0000",
+                    fSpecularLevel="1.0000",
+                    fGlossiness="56",
+                    fOpacity="1.0000",
+                    fReflect="1.0000",
+                    diffuse_texture=resolved_tex.get("color") or def_diffuse,
+                    normal_texture=resolved_tex.get("normal") or def_normal,
+                    specular_texture=resolved_tex.get("specular") or def_specular,
+                    team_texture=resolved_tex.get("team") or "team.tga",
+                    lightmap_texture=resolved_tex.get("lightmap") or "glow.tga",
+                )
+            else:
+                def_diffuse = f"textures/color{idx_suffix}.tga" if stem.startswith("material") else f"textures/{stem}_color.tga"
+                def_normal = f"textures/normal{idx_suffix}.tga" if stem.startswith("material") else f"textures/{stem}_normal.tga"
+                def_mrao = f"textures/mrao{idx_suffix}.tga" if stem.startswith("material") else f"textures/{stem}_mrao.tga"
+
+                k2_mat = K2Material(
+                    name="",
+                    target_engine="HON_REBORN",
+                    shader="/shared/shaders/heroes/hero_diffuse_normal_mrao_team_envmap_tinted.shader",
+                    vDiffuseColor="1 1 1",
+                    fSpecularLevel="1.5",
+                    fGlossiness="32",
+                    fOpacity="1.0",
+                    diffuse_texture=resolved_tex.get("color") or def_diffuse,
+                    normal_texture=resolved_tex.get("normal") or def_normal,
+                    mrao_texture=resolved_tex.get("mrao") or def_mrao,
+                    cube_texture="/world/sky/panorama/1.tga",
+                )
+
             mat_filepath = os.path.join(model_dir, f"{stem}.material")
             with open(mat_filepath, "w", encoding="utf-8") as f:
-                f.write(write_material_xml(k2_mat))
+                f.write(write_material_xml(k2_mat, target_engine=target_engine))
 
         if not unique_materials and k2_meshes:
-            k2_mat = K2Material(
-                name="",
-                shader="/shared/shaders/heroes/hero_diffuse_normal_mrao_team_envmap_tinted.shader",
-                vDiffuseColor="1 1 1",
-                fSpecularLevel="1.5",
-                fGlossiness="32",
-                fOpacity="1.0",
-                diffuse_texture="textures/color.tga",
-                normal_texture="textures/normal.tga",
-                mrao_texture="textures/mrao.tga",
-                cube_texture="/world/sky/panorama/1.tga",
-            )
+            if target_engine == "HON_PBT":
+                k2_mat = K2Material(
+                    name="",
+                    target_engine="HON_PBT",
+                    diffuse_texture="color.tga",
+                    normal_texture="normal.tga",
+                    specular_texture="spec_color.tga",
+                    team_texture="team.tga",
+                    lightmap_texture="glow.tga",
+                )
+            else:
+                k2_mat = K2Material(
+                    name="",
+                    target_engine="HON_REBORN",
+                    shader="/shared/shaders/heroes/hero_diffuse_normal_mrao_team_envmap_tinted.shader",
+                    diffuse_texture="textures/color.tga",
+                    normal_texture="textures/normal.tga",
+                    mrao_texture="textures/mrao.tga",
+                    cube_texture="/world/sky/panorama/1.tga",
+                )
             mat_filepath = os.path.join(model_dir, "material.material")
             with open(mat_filepath, "w", encoding="utf-8") as f:
-                f.write(write_material_xml(k2_mat))
+                f.write(write_material_xml(k2_mat, target_engine=target_engine))
 
     if export_mdf:
         skin_refs: List[K2SkinReference] = []

@@ -26,13 +26,18 @@ class K2MaterialPhase:
 @dataclass
 class K2Material:
     name: str = ""
-    shader: str = "/shared/shaders/heroes/hero_diffuse_normal_mrao_team_envmap_tinted.shader"
-    vDiffuseColor: str = "1 1 1"
-    fSpecularLevel: str = "1.5"
-    fGlossiness: str = "32"
-    fOpacity: str = "1.0"
+    target_engine: str = "HON_PBT"  # "HON_PBT" (Classic S2) or "HON_REBORN" (PBR)
+    shader: str = ""
+    vDiffuseColor: str = "1.0000 1.0000 1.0000"
+    fSpecularLevel: str = "1.0000"
+    fGlossiness: str = "56"
+    fOpacity: str = "1.0000"
+    fReflect: str = "1.0000"
     diffuse_texture: str = ""
     normal_texture: str = ""
+    specular_texture: str = ""
+    team_texture: str = ""
+    lightmap_texture: str = ""
     mrao_texture: str = ""
     cube_texture: str = "/world/sky/panorama/1.tga"
     shaders: List[str] = field(default_factory=list)
@@ -124,23 +129,28 @@ def read_material_xml(xml_text: str) -> K2Material:
         phases=phases,
     )
 
-def write_material_xml(mat: K2Material) -> str:
+def write_material_xml(mat: K2Material, target_engine: Optional[str] = None) -> str:
     """Generates K2/S2 Exporter compliant .material XML."""
+    if target_engine:
+        engine = target_engine
+    elif mat.shader:
+        engine = "HON_REBORN"
+    else:
+        engine = getattr(mat, "target_engine", "HON_PBT")
+
     mat_attr = f' name="{mat.name}"' if mat.name else ""
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         f'<material{mat_attr}>',
     ]
 
-    # Parameters line
-    shader_attr = f' shader="{mat.shader}"' if mat.shader else ""
-    lines.append(
-        f'\t<parameters{shader_attr} vDiffuseColor="{mat.vDiffuseColor}" '
-        f'fSpecularLevel="{mat.fSpecularLevel}" fGlossiness="{mat.fGlossiness}" fOpacity="{mat.fOpacity}" />'
-    )
-
     # If mat.phases is explicitly populated with custom phases, preserve them:
     if mat.phases and not mat.diffuse_texture:
+        shader_attr = f' shader="{mat.shader}"' if mat.shader else ""
+        lines.append(
+            f'\t<parameters{shader_attr} vDiffuseColor="{mat.vDiffuseColor}" '
+            f'fSpecularLevel="{mat.fSpecularLevel}" fGlossiness="{mat.fGlossiness}" fOpacity="{mat.fOpacity}" />'
+        )
         for phase in mat.phases:
             light_attr = f' lighting="{phase.lighting_spec}"' if phase.lighting_spec else ""
             cull_attr = f' cull="{phase.cull}"' if phase.cull else ""
@@ -154,21 +164,98 @@ def write_material_xml(mat: K2Material) -> str:
 
     diffuse = mat.diffuse_texture
     normal = mat.normal_texture
+    specular = getattr(mat, "specular_texture", "")
+    team = getattr(mat, "team_texture", "")
+    lightmap = getattr(mat, "lightmap_texture", "")
     mrao = mat.mrao_texture
     cube = mat.cube_texture
 
     if not diffuse and mat.phases:
         for p in mat.phases:
             for s in p.samplers:
-                if s.name == "diffuse" and not diffuse:
+                if s.name in ("diffuse", "opacity") and not diffuse:
                     diffuse = s.texture_path
                 elif s.name == "normalmap" and not normal:
                     normal = s.texture_path
+                elif s.name == "specular" and not specular:
+                    specular = s.texture_path
+                elif s.name == "team" and not team:
+                    team = s.texture_path
+                elif s.name == "lightmap" and not lightmap:
+                    lightmap = s.texture_path
                 elif s.name == "mrao" and not mrao:
                     mrao = s.texture_path
 
-    if not diffuse:
-        diffuse = "textures/color.tga"
+    # ==========================================
+    # HoN x64 PBT (Project Bradley / Classic K2)
+    # ==========================================
+    if engine == "HON_PBT":
+        diff_name = os.path.basename(diffuse) if diffuse else "color.tga"
+        norm_name = os.path.basename(normal) if normal else "normal.tga"
+        spec_name = os.path.basename(specular) if specular else "spec_color.tga"
+        team_name = os.path.basename(team) if team else "team.tga"
+        glow_name = os.path.basename(lightmap) if lightmap else "glow.tga"
+
+        ps_shader = "mesh_color_unit_team_lightmap_spec"
+        sampler_props = 'repeat_u="true" repeat_v="true" scale_u="1.0000" scale_v="1.0000" fps="15" mipmaps="true" fullquality="false" nocompress="false" filtering="true" border="false"'
+
+        lines.append(
+            f'\t<parameters vDiffuseColor="{mat.vDiffuseColor}" '
+            f'fSpecularLevel="{mat.fSpecularLevel}" fGlossiness="{mat.fGlossiness}" '
+            f'fOpacity="{mat.fOpacity}" fReflect="{mat.fReflect}" />'
+        )
+
+        # 1. Shadow Phase
+        lines.extend([
+            '\t<phase name="shadow" vs="mesh_shadow_opacity" ps="mesh_shadow_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="CULL_BACK" alphatest="true">',
+            f'\t\t<sampler name="opacity" texture="{diff_name}" {sampler_props} />',
+            '\t</phase>',
+        ])
+
+        # 2. Depth Phase
+        lines.extend([
+            '\t<phase name="depth" vs="mesh_depth_opacity" ps="mesh_depth_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="CULL_BACK" alphatest="true">',
+            f'\t\t<sampler name="opacity" texture="{diff_name}" {sampler_props} />',
+            '\t</phase>',
+        ])
+
+        # 3. Color Phase
+        lines.extend([
+            f'\t<phase name="color" vs="mesh_color_unit" ps="{ps_shader}" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="CULL_BACK" alphatest="true" layer="0">',
+            f'\t\t<sampler name="diffuse" texture="{diff_name}" {sampler_props} />',
+            f'\t\t<sampler name="normalmap" texture="{norm_name}" {sampler_props} />',
+            f'\t\t<sampler name="specular" texture="{spec_name}" {sampler_props} />',
+            f'\t\t<sampler name="team" texture="{team_name}" {sampler_props} />',
+            f'\t\t<sampler name="lightmap" texture="{glow_name}" {sampler_props} />',
+            '\t</phase>',
+        ])
+
+        # 4. Fade Phase with Translucent Multipass
+        lines.extend([
+            '\t<phase name="fade" vs="mesh_depth_opacity" ps="mesh_depth_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="true" cull="CULL_BACK" alphatest="true" layer="0" colorwrite="false" alphawrite="false" depthwrite="true">',
+            f'\t\t<sampler name="opacity" texture="{diff_name}" {sampler_props} />',
+            f'\t\t<multipass vs="mesh_color_unit" ps="{ps_shader}" srcblend="BLEND_SRC_ALPHA" dstblend="BLEND_ONE_MINUS_SRC_ALPHA" translucent="true" cull="CULL_BACK" alphatest="false" layer="0">',
+            f'\t\t\t<sampler name="diffuse" texture="{diff_name}" {sampler_props} />',
+            f'\t\t\t<sampler name="normalmap" texture="{norm_name}" {sampler_props} />',
+            f'\t\t\t<sampler name="specular" texture="{spec_name}" {sampler_props} />',
+            f'\t\t\t<sampler name="team" texture="{team_name}" {sampler_props} />',
+            f'\t\t\t<sampler name="lightmap" texture="{glow_name}" {sampler_props} />',
+            '\t\t</multipass>',
+            '\t</phase>',
+        ])
+
+        lines.append('</material>')
+        return "\n".join(lines) + "\n"
+
+    # ==========================================
+    # HoN Reborn (Modern PBR / MRAO)
+    # ==========================================
+    diffuse = diffuse or "textures/color.tga"
+    shader = mat.shader or "/shared/shaders/heroes/hero_diffuse_normal_mrao_team_envmap_tinted.shader"
+    lines.append(
+        f'\t<parameters shader="{shader}" vDiffuseColor="{mat.vDiffuseColor}" '
+        f'fSpecularLevel="{mat.fSpecularLevel}" fGlossiness="{mat.fGlossiness}" fOpacity="{mat.fOpacity}" />'
+    )
 
     # 1. Shadow phase
     lines.extend([
