@@ -27,10 +27,8 @@ class KONGOR_MT_rigging_menu(bpy.types.Menu):
         layout.operator("kongor.remap_to_k2_universal", text="Universal Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
         layout.operator("kongor.remap_to_k2_universal", text="Universal Remap to Def (def_)", icon="SYNTAX_OFF").reverse = True
         layout.separator()
-        layout.operator("kongor.add_k2_rig", text="Add K2 Game Human Rig", icon="OUTLINER_OB_ARMATURE")
+        layout.operator("kongor.add_k2_rig", text="Add KONGOR Rig Character...", icon="OUTLINER_OB_ARMATURE")
         layout.operator("kongor.fit_bone_size", text="Auto-Fit Bone Sizes", icon="ARROW_LEFTRIGHT")
-        layout.separator()
-        layout.menu("rgc.add_armature", text="Rig Creator Presets...", icon="FILE_BLEND")
 
 class KONGOR_MT_main_menu(bpy.types.Menu):
     """Top header dropdown menu in 3D Viewport"""

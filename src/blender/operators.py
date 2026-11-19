@@ -382,17 +382,17 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         # 3. KONGOR Rig & K2 Skeleton Tools
         rig_k2_box = layout.box()
         rig_k2_box.label(text="KONGOR Rig & K2 Skeleton Tools:", icon="ARMATURE_DATA")
-        row_gen = rig_k2_box.row(align=True)
-        row_gen.operator("kongor.generate_k2_skeleton", text="Generate K2 Armature", icon="ARMATURE_DATA")
-        row_gen.operator("kongor.conform_k2_hierarchy", text="Conform K2 Hierarchy", icon="CON_CHILDOF")
+        row_spawn = rig_k2_box.row(align=True)
+        row_spawn.operator("kongor.add_k2_rig", text="Add Character Rig...", icon="OUTLINER_OB_ARMATURE")
+        row_spawn.operator("kongor.generate_k2_skeleton", text="Generate K2 Armature", icon="ARMATURE_DATA")
 
         row_k2 = rig_k2_box.row(align=True)
+        row_k2.operator("kongor.conform_k2_hierarchy", text="Conform K2 Hierarchy", icon="CON_CHILDOF")
         row_k2.operator("kongor.add_k2_sockets", text="Add K2 Sockets", icon="PLUS")
-        row_k2.operator("kongor.isolate_k2_deform", text="Isolate Deform", icon="CHECKMARK")
 
         row_remap = rig_k2_box.row(align=True)
         row_remap.operator("kongor.remap_to_k2_universal", text="Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
-        row_remap.operator("kongor.remap_to_k2_universal", text="Reverse to Def", icon="SYNTAX_OFF").reverse = True
+        row_remap.operator("kongor.isolate_k2_deform", text="Isolate Deform", icon="CHECKMARK")
 
         # 4. KONGOR Rig Pipeline Section
         arp_box = layout.box()
@@ -645,59 +645,37 @@ class KONGOR_OT_setup_k2_deform(bpy.types.Operator):
         return {"FINISHED"}
 
 class KONGOR_OT_add_k2_rig(bpy.types.Operator):
-    """Add a game-ready Rig Creator Human armature configured for K2 Engine"""
+    """Add a professional character armature preset from KONGOR Rig (Human, Quadruped, etc.)"""
     bl_idname = "kongor.add_k2_rig"
-    bl_label = "Add K2 Game Human Rig"
+    bl_label = "Add KONGOR Rig Character"
+    bl_description = "Add professional character armature preset from KONGOR Rig"
     bl_options = {"REGISTER", "UNDO"}
 
-    rig_type: bpy.props.EnumProperty(
-        name="Rig Type",
-        description="Type of K2-compatible armature to generate",
+    preset: bpy.props.EnumProperty(
+        name="Character Preset",
+        description="Character preset to append from KONGOR Rig",
         items=[
-            ("Human For Games", "Human For Games", "Full game-ready human rig with IK/FK controls and deform hierarchy"),
-            ("Human Flat Hierarchy", "Human Flat Hierarchy", "Flat hierarchy human rig optimized for game engines"),
-            ("Basic Human", "Basic Human", "Simplified human skeleton with basic controls"),
+            ("human", "Human (Biped)", "Full biped humanoid character with IK/FK controls and facial setup"),
+            ("dog", "Dog (Quadruped)", "Quadruped canine character rig"),
+            ("horse", "Horse (Quadruped)", "Quadruped equine character rig"),
+            ("bird", "Bird (Avian)", "Avian flying creature rig with wings"),
+            ("free", "Empty / Free Rig", "Blank template rig with root controller"),
         ],
-        default="Human For Games",
-    )
-
-    remap_names: bpy.props.BoolProperty(
-        name="Remap to K2 Bip01 Names",
-        description="Automatically rename deform bones to standard K2 / Heroes of Newerth Bip01 naming",
-        default=True,
+        default="human",
     )
 
     def execute(self, context):
-        if not hasattr(bpy.ops, "rgc") or not hasattr(bpy.ops.rgc, "add_armature"):
-            self.report({"ERROR"}, "Rig Creator module is not loaded.")
+        if hasattr(bpy.ops, "arp") and hasattr(bpy.ops.arp, "append_arp"):
+            try:
+                bpy.ops.arp.append_arp(rig_preset=self.preset)
+                self.report({"INFO"}, f"Successfully added KONGOR Rig ({self.preset.capitalize()})")
+                return {"FINISHED"}
+            except Exception as e:
+                self.report({"ERROR"}, f"Failed to spawn KONGOR Rig preset: {e}")
+                return {"CANCELLED"}
+        else:
+            self.report({"ERROR"}, "KONGOR Rig module is not loaded.")
             return {"CANCELLED"}
-
-        before_objs = set(context.scene.objects)
-        try:
-            bpy.ops.rgc.add_armature(type=self.rig_type)
-        except Exception as e:
-            self.report({"ERROR"}, f"Failed to spawn Rig Creator armature: {e}")
-            return {"CANCELLED"}
-
-        new_objs = [o for o in context.scene.objects if o not in before_objs]
-        arm_obj = next((o for o in new_objs if o.type == "ARMATURE"), None)
-
-        if arm_obj:
-            context.view_layer.objects.active = arm_obj
-            arm_obj.select_set(True)
-
-            # Ensure deform flags are set
-            bpy.ops.kongor.setup_k2_deform()
-
-            # Remap names if requested
-            if self.remap_names:
-                bpy.ops.kongor.remap_to_k2(reverse=False)
-
-            self.report({"INFO"}, f"Successfully added K2 Rig: {arm_obj.name}")
-            return {"FINISHED"}
-
-        self.report({"INFO"}, "Rig added to scene.")
-        return {"FINISHED"}
 
 classes = (
     KONGOR_OT_import_model,
