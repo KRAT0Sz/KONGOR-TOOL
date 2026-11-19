@@ -352,59 +352,68 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         col.label(text="Heroes of Newerth K2 Engine Pipeline", icon="TOOL_SETTINGS")
         col.operator("kongor.inspect_scene", text="Inspect Scene Objects", icon="INFO")
 
-        # 2. Model Section
-        model_box = layout.box()
-        model_box.label(text="K2 Model (.model / SMDL v3):", icon="OBJECT_DATA")
-        row = model_box.row(align=True)
-        row.operator("kongor.import_model", text="Import Model", icon="IMPORT")
-        row.operator("kongor.export_model", text="Export Model", icon="EXPORT")
+        # 2. S2 Games Model Exporter Section (matches Image 2)
+        s2_box = layout.box()
+        s2_hdr = s2_box.row()
+        s2_hdr.label(text="S2 Games Model Exporter (Version 4)", icon="MONKEY")
 
-        settings_imp = context.scene.kongor_import
+        # Export options sub-box
+        exp_box = s2_box.box()
+        exp_box.label(text="Export options")
         settings_exp = context.scene.kongor_export
-        col = model_box.column(align=True)
-        col.prop(settings_exp, "prop_preset")
-        col.prop(settings_exp, "force_static")
-        col.prop(settings_exp, "remove_hierarchy")
-        col.prop(settings_exp, "copy_textures")
-        col.prop(settings_exp, "export_materials")
-        col.prop(settings_exp, "standardize_material_names")
-        col.prop(settings_exp, "export_mdf")
-        col.prop(settings_exp, "apply_modifiers")
-        col.prop(settings_exp, "export_deform_only")
-        col.operator("kongor.standardize_materials", text="Standardize Materials to K2", icon="MATERIAL")
-        col.separator()
-        col.prop(settings_imp, "flip_v")
-        col.prop(settings_imp, "bones_in_front")
-        col.prop(settings_imp, "show_bone_names")
+        col_exp = exp_box.column(align=True)
+        col_exp.prop(settings_exp, "force_static")
+        col_exp.prop(settings_exp, "remove_hierarchy")
+        col_exp.prop(settings_exp, "copy_textures")
+        col_exp.prop(settings_exp, "export_geometry")
+        col_exp.prop(settings_exp, "export_mdf")
+        col_exp.prop(settings_exp, "export_materials")
+        col_exp.prop(settings_exp, "export_animation")
 
-        # Active Mesh Object Settings (matches S2Exporter Mesh Info)
+        row_acts = s2_box.row(align=True)
+        row_acts.scale_y = 1.3
+        row_acts.operator("kongor.export_model", text="Export", icon="EXPORT")
+        row_acts.operator("kongor.export_clip", text="Clip", icon="RENDER_ANIMATION")
+        s2_box.operator("kongor.inspect_scene", text="Scene Info", icon="INFO")
+
+        # Active Mesh Info (matches Image 2 Mesh Info)
         act = context.active_object
         if act and act.type == "MESH":
             mesh_box = layout.box()
             mesh_box.label(text="Mesh Info", icon="OBJECT_DATA")
-            col_mesh = mesh_box.column(align=True)
-            col_mesh.prop(act, "name", text="Mesh")
+            
+            box_mesh = mesh_box.box()
+            box_mesh.label(text="Mesh")
+            col_mesh = box_mesh.column(align=True)
+            col_mesh.prop(act, "name", text="")
 
-            row_opts = mesh_box.row()
+            row_opts = box_mesh.row()
             row_opts.prop(act.kongor, "exclude_normals")
             row_opts.prop(act.kongor, "is_roof")
 
-            col_radio = mesh_box.column(align=True)
+            col_radio = box_mesh.column(align=True)
             col_radio.prop(act.kongor, "mesh_type", expand=True)
 
             if act.kongor.mesh_type == "NORMAL":
-                mesh_box.prop(act.kongor, "bonelink")
+                box_mesh.prop(act.kongor, "bonelink")
             elif act.kongor.mesh_type == "SURF":
-                mesh_box.label(text="Exports as collision surface (_surf polyhedron)", icon="INFO")
+                box_mesh.label(text="Collision surface (_surf)", icon="INFO")
 
             # Material Slots (matches S2Exporter Mesh Info)
             mat_box = mesh_box.box()
             mat_box.label(text="Material", icon="MATERIAL")
-            if act.material_slots:
-                for slot in act.material_slots:
-                    mat_box.prop(slot, "material", text="")
+            col_mat = mat_box.column(align=True)
+            slots = act.material_slots
+            if slots:
+                for slot in slots[:3]:
+                    col_mat.prop(slot, "material", text="")
+                if len(slots) < 3:
+                    for idx in range(len(slots), 3):
+                        col_mat.label(text=f"[Slot {idx+1} Empty]")
             else:
-                mat_box.label(text="No materials assigned", icon="INFO")
+                col_mat.label(text="[Slot 1 Empty]")
+                col_mat.label(text="[Slot 2 Empty]")
+                col_mat.label(text="[Slot 3 Empty]")
 
         # 3. KONGOR Rig & K2 Skeleton Tools
         rig_k2_box = layout.box()

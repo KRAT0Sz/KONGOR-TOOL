@@ -48,7 +48,7 @@ class KongorModelExportSettings(bpy.types.PropertyGroup):
         default="NONE",
     )
     force_static: BoolProperty(
-        name="Force Static Mesh",
+        name="Force static",
         description="Force export all geometry as rigid static meshes (ignores bones/skinning, ideal for rocks, scenery, and static props)",
         default=False,
     )
@@ -58,9 +58,29 @@ class KongorModelExportSettings(bpy.types.PropertyGroup):
         default=False,
     )
     copy_textures: BoolProperty(
-        name="Copy Textures",
+        name="Copy textures",
         description="Copy referenced texture files into the model export directory (matching S2Exporter)",
         default=True,
+    )
+    export_geometry: BoolProperty(
+        name="Geometry",
+        description="Export mesh geometry to .model file (matching S2Exporter)",
+        default=True,
+    )
+    export_mdf: BoolProperty(
+        name="Model Definition",
+        description="Write companion K2 Model Definition File (.mdf, matching S2Exporter)",
+        default=True,
+    )
+    export_materials: BoolProperty(
+        name="Materials",
+        description="Write companion K2 XML .material files for each exported mesh (matching S2Exporter)",
+        default=True,
+    )
+    export_animation: BoolProperty(
+        name="Animation",
+        description="Export companion animation clip (.clip) alongside model (matching S2Exporter)",
+        default=False,
     )
     flip_v: BoolProperty(
         name="Flip UV (V-Axis)",
@@ -72,19 +92,9 @@ class KongorModelExportSettings(bpy.types.PropertyGroup):
         description="Apply object modifiers during export",
         default=True,
     )
-    export_materials: BoolProperty(
-        name="Generate .material",
-        description="Write companion K2 XML .material files for each exported mesh",
-        default=True,
-    )
     standardize_material_names: BoolProperty(
         name="Standardize Material Names",
         description="Format exported materials as canonical K2 sequence (material.material, material2.material, material3.material...)",
-        default=True,
-    )
-    export_mdf: BoolProperty(
-        name="Generate .mdf",
-        description="Write companion K2 Model Definition File (.mdf)",
         default=True,
     )
     export_deform_only: BoolProperty(

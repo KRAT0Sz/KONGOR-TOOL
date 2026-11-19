@@ -317,9 +317,13 @@ def export_k2_model_file(
     overall_bbox = BoundingBox()
 
     # Determine character meshes to export (prefer selected, then visible character meshes)
-    selected_char = [obj for obj in context.selected_objects if _is_character_mesh(obj)]
-    visible_char = [obj for obj in context.scene.objects if _is_character_mesh(obj) and not obj.hide_viewport and not obj.hide_get()]
-    char_objects = selected_char if selected_char else (visible_char if visible_char else [obj for obj in context.scene.objects if _is_character_mesh(obj)])
+    export_geom = getattr(settings, "export_geometry", True)
+    if export_geom:
+        selected_char = [obj for obj in context.selected_objects if _is_character_mesh(obj)]
+        visible_char = [obj for obj in context.scene.objects if _is_character_mesh(obj) and not obj.hide_viewport and not obj.hide_get()]
+        char_objects = selected_char if selected_char else (visible_char if visible_char else [obj for obj in context.scene.objects if _is_character_mesh(obj)])
+    else:
+        char_objects = []
 
     # Determine collision surfaces (prefer selected, then visible surfaces)
     selected_surfs = [obj for obj in context.selected_objects if _is_collision_surface(obj)]
@@ -696,6 +700,11 @@ def export_k2_model_file(
         )
         with open(mdf_filename, "w", encoding="utf-8") as f:
             f.write(write_mdf_xml(mdf))
+
+    if getattr(settings, "export_animation", False) and armature_obj:
+        clip_path = os.path.join(clips_dir, f"{model_name}.clip")
+        clip_settings = getattr(context.scene, "kongor_clip", None)
+        export_k2_clip_file(clip_path, context, armature_obj, settings=clip_settings)
 
     return True, f"Successfully exported {len(k2_meshes)} meshes, {len(k2_surfaces)} collision surfaces, and {len(bones)} bones."
 

@@ -79,6 +79,98 @@ def menu_func_export(self, context):
     self.layout.operator("kongor.export_model", text="Heroes of Newerth Model (.model)")
     self.layout.operator("kongor.export_clip", text="Heroes of Newerth Clip (.clip)")
 
+class KONGOR_PT_s2_export_panel(bpy.types.Panel):
+    """S2 Games Model Exporter - Export Options (matches 3ds Max S2Exporter)"""
+    bl_label = "Export"
+    bl_idname = "KONGOR_PT_s2_export_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'KONGOR Tool'
+
+    def draw(self, context):
+        layout = self.layout
+        settings_exp = context.scene.kongor_export
+
+        # Header Box with S2 Games Model Exporter Version 4 styling
+        hdr = layout.box()
+        col_hdr = hdr.column(align=True)
+        row_title = col_hdr.row(align=True)
+        row_title.label(text="S2 Games Model Exporter", icon="MONKEY")
+        col_hdr.label(text="Version 4")
+
+        # Export options Box
+        box = layout.box()
+        box.label(text="Export options")
+        col = box.column(align=True)
+        col.prop(settings_exp, "force_static")
+        col.prop(settings_exp, "remove_hierarchy")
+        col.prop(settings_exp, "copy_textures")
+        col.prop(settings_exp, "export_geometry")
+        col.prop(settings_exp, "export_mdf")
+        col.prop(settings_exp, "export_materials")
+        col.prop(settings_exp, "export_animation")
+
+        # Action Buttons
+        row = layout.row(align=True)
+        row.scale_y = 1.3
+        row.operator("kongor.export_model", text="Export", icon="EXPORT")
+        row.operator("kongor.export_clip", text="Clip", icon="RENDER_ANIMATION")
+
+        row_info = layout.row()
+        row_info.operator("kongor.inspect_scene", text="Scene Info", icon="INFO")
+
+
+class KONGOR_PT_s2_mesh_info_panel(bpy.types.Panel):
+    """S2 Games Model Exporter - Mesh Info (matches 3ds Max S2Exporter)"""
+    bl_label = "Mesh Info"
+    bl_idname = "KONGOR_PT_s2_mesh_info_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'KONGOR Tool'
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.active_object
+
+        if not obj or obj.type != "MESH":
+            box = layout.box()
+            box.label(text="Select a Mesh object", icon="INFO")
+            return
+
+        box = layout.box()
+        box.label(text="Mesh")
+        col = box.column(align=True)
+        col.prop(obj, "name", text="")
+
+        row_opts = box.row()
+        row_opts.prop(obj.kongor, "exclude_normals")
+        row_opts.prop(obj.kongor, "is_roof")
+
+        col_radio = box.column(align=True)
+        col_radio.prop(obj.kongor, "mesh_type", expand=True)
+
+        if obj.kongor.mesh_type == "NORMAL":
+            box.prop(obj.kongor, "bonelink")
+        elif obj.kongor.mesh_type == "SURF":
+            box.label(text="Collision surface (_surf)", icon="INFO")
+
+        # Material Box
+        mat_box = layout.box()
+        mat_box.label(text="Material")
+        col_mat = mat_box.column(align=True)
+        slots = obj.material_slots
+        if slots:
+            for slot in slots[:3]:
+                col_mat.prop(slot, "material", text="")
+            if len(slots) < 3:
+                for idx in range(len(slots), 3):
+                    col_mat.label(text=f"[Slot {idx+1} Empty]")
+        else:
+            col_mat.label(text="[Slot 1 Empty]")
+            col_mat.label(text="[Slot 2 Empty]")
+            col_mat.label(text="[Slot 3 Empty]")
+
+
 class KONGOR_PT_object_panel(bpy.types.Panel):
     """K2 Mesh Info & Object Settings (matches S2Exporter Mesh Info)"""
     bl_label = "K2 Mesh Info"
@@ -95,10 +187,10 @@ class KONGOR_PT_object_panel(bpy.types.Panel):
         layout = self.layout
         obj = context.object
         box = layout.box()
-        box.label(text="Mesh Info", icon="OBJECT_DATA")
+        box.label(text="Mesh", icon="OBJECT_DATA")
         
         col_mesh = box.column(align=True)
-        col_mesh.prop(obj, "name", text="Mesh")
+        col_mesh.prop(obj, "name", text="")
         
         row_opts = box.row()
         row_opts.prop(obj.kongor, "exclude_normals")
@@ -113,17 +205,26 @@ class KONGOR_PT_object_panel(bpy.types.Panel):
             box.label(text="Exports as collision surface (_surf polyhedron)", icon="INFO")
 
         # Material Slots (matches S2Exporter Mesh Info material slots)
-        mat_box = box.box()
+        mat_box = layout.box()
         mat_box.label(text="Material", icon="MATERIAL")
-        if obj.material_slots:
-            for slot in obj.material_slots:
-                mat_box.prop(slot, "material", text="")
+        col_mat = mat_box.column(align=True)
+        slots = obj.material_slots
+        if slots:
+            for slot in slots[:3]:
+                col_mat.prop(slot, "material", text="")
+            if len(slots) < 3:
+                for idx in range(len(slots), 3):
+                    col_mat.label(text=f"[Slot {idx+1} Empty]")
         else:
-            mat_box.label(text="No materials assigned", icon="INFO")
+            col_mat.label(text="[Slot 1 Empty]")
+            col_mat.label(text="[Slot 2 Empty]")
+            col_mat.label(text="[Slot 3 Empty]")
 
 classes = (
     KONGOR_MT_rigging_menu,
     KONGOR_MT_main_menu,
+    KONGOR_PT_s2_export_panel,
+    KONGOR_PT_s2_mesh_info_panel,
     KONGOR_PT_object_panel,
 )
 
