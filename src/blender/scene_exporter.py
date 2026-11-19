@@ -410,120 +410,135 @@ def export_k2_model_file(
         bm.to_mesh(temp_mesh)
         bm.free()
 
-        mesh_bbox = BoundingBox()
-        raw_verts: List[VertexAttributes] = []
-        raw_faces: List[Tuple[int, int, int]] = []
-
         uv_layer = temp_mesh.uv_layers.active.data if temp_mesh.uv_layers.active else None
         col_attr = temp_mesh.color_attributes.active if temp_mesh.color_attributes else None
         col_domain = col_attr.domain if col_attr else None
         col_layer = col_attr.data if col_attr else None
-
         exclude_normals = getattr(obj.kongor, "exclude_normals", False)
-        loop_counter = 0
-        for poly in temp_mesh.polygons:
-            poly_loops: List[int] = []
-            for loop_idx in poly.loop_indices:
-                v_idx = temp_mesh.loops[loop_idx].vertex_index
-                v = temp_mesh.vertices[v_idx]
-                pos = tuple(v.co)
-                normal = (0.0, 0.0, 0.0) if exclude_normals else tuple(temp_mesh.loops[loop_idx].normal)
 
-                mesh_bbox.add_point(pos)
-                overall_bbox.add_point(pos)
+        used_mat_indices = sorted(set(p.material_index for p in temp_mesh.polygons)) if temp_mesh.polygons else [0]
+        if not used_mat_indices:
+            used_mat_indices = [0]
+        is_multi_mat = len(used_mat_indices) > 1
 
-                uvs: List[Tuple[float, float]] = []
-                if uv_layer and loop_idx < len(uv_layer):
-                    u, v_coord = uv_layer[loop_idx].uv
-                    uvs.append((u, (1.0 - v_coord) if flip_v else v_coord))
+        for slot_idx in used_mat_indices:
+            target_polys = [p for p in temp_mesh.polygons if p.material_index == slot_idx] if is_multi_mat else temp_mesh.polygons
+            if not target_polys:
+                continue
 
-                colors: List[Tuple[int, int, int, int]] = []
-                if col_layer:
-                    c_idx = loop_idx if col_domain == "CORNER" else v_idx
-                    if c_idx < len(col_layer):
-                        elem = col_layer[c_idx]
-                        c = getattr(elem, "color", None) or getattr(elem, "vector", (1.0, 1.0, 1.0, 1.0))
-                        colors.append((
-                            int(c[0] * 255),
-                            int(c[1] * 255),
-                            int(c[2] * 255),
-                            int(c[3] * 255) if len(c) > 3 else 255
-                        ))
+            mesh_bbox = BoundingBox()
+            raw_verts: List[VertexAttributes] = []
+            raw_faces: List[Tuple[int, int, int]] = []
 
-                weights: List[Tuple[int, float]] = []
-                for g in v.groups:
-                    if g.group < len(obj.vertex_groups):
-                        vg_name = obj.vertex_groups[g.group].name
-                        if vg_name in bone_name_to_index:
-                            weights.append((bone_name_to_index[vg_name], g.weight))
+            loop_counter = 0
+            for poly in target_polys:
+                poly_loops: List[int] = []
+                for loop_idx in poly.loop_indices:
+                    v_idx = temp_mesh.loops[loop_idx].vertex_index
+                    v = temp_mesh.vertices[v_idx]
+                    pos = tuple(v.co)
+                    normal = (0.0, 0.0, 0.0) if exclude_normals else tuple(temp_mesh.loops[loop_idx].normal)
 
-                total_w = sum(w[1] for w in weights)
-                if total_w > 0.0:
-                    weights = [(w[0], w[1] / total_w) for w in weights]
+                    mesh_bbox.add_point(pos)
+                    overall_bbox.add_point(pos)
 
-                raw_verts.append(
-                    VertexAttributes(
-                        position=pos,
-                        normal=normal,
-                        uvs=uvs,
-                        tangents=[],
-                        signs=[0],
-                        colors=colors,
-                        weights=weights,
+                    uvs: List[Tuple[float, float]] = []
+                    if uv_layer and loop_idx < len(uv_layer):
+                        u, v_coord = uv_layer[loop_idx].uv
+                        uvs.append((u, (1.0 - v_coord) if flip_v else v_coord))
+
+                    colors: List[Tuple[int, int, int, int]] = []
+                    if col_layer:
+                        c_idx = loop_idx if col_domain == "CORNER" else v_idx
+                        if c_idx < len(col_layer):
+                            elem = col_layer[c_idx]
+                            c = getattr(elem, "color", None) or getattr(elem, "vector", (1.0, 1.0, 1.0, 1.0))
+                            colors.append((
+                                int(c[0] * 255),
+                                int(c[1] * 255),
+                                int(c[2] * 255),
+                                int(c[3] * 255) if len(c) > 3 else 255
+                            ))
+
+                    weights: List[Tuple[int, float]] = []
+                    for g in v.groups:
+                        if g.group < len(obj.vertex_groups):
+                            vg_name = obj.vertex_groups[g.group].name
+                            if vg_name in bone_name_to_index:
+                                weights.append((bone_name_to_index[vg_name], g.weight))
+
+                    total_w = sum(w[1] for w in weights)
+                    if total_w > 0.0:
+                        weights = [(w[0], w[1] / total_w) for w in weights]
+
+                    raw_verts.append(
+                        VertexAttributes(
+                            position=pos,
+                            normal=normal,
+                            uvs=uvs,
+                            tangents=[],
+                            signs=[0],
+                            colors=colors,
+                            weights=weights,
+                        )
                     )
-                )
-                poly_loops.append(loop_counter)
-                loop_counter += 1
+                    poly_loops.append(loop_counter)
+                    loop_counter += 1
 
-            if len(poly_loops) == 3:
-                raw_faces.append((poly_loops[0], poly_loops[1], poly_loops[2]))
+                if len(poly_loops) == 3:
+                    raw_faces.append((poly_loops[0], poly_loops[1], poly_loops[2]))
 
-        unique_verts, clean_faces = split_and_remap_vertices(raw_verts, raw_faces)
+            unique_verts, clean_faces = split_and_remap_vertices(raw_verts, raw_faces)
 
-        # Resolve S2-compliant shader_name (e.g. "material", "material2")
-        mat = obj.data.materials[0] if (obj.data.materials and obj.data.materials[0]) else None
-        if mat and mat.name_full in material_to_stem:
-            mat_stem = material_to_stem[mat.name_full]
-        elif mat and not standardize_mat:
-            mat_stem = mat.name
-        else:
-            mat_stem = "material"
+            # Resolve S2-compliant shader_name (e.g. "material", "material2")
+            mat = (
+                obj.material_slots[slot_idx].material
+                if (slot_idx < len(obj.material_slots) and obj.material_slots[slot_idx].material)
+                else (obj.data.materials[0] if obj.data.materials else None)
+            )
+            if mat and mat.name_full in material_to_stem:
+                mat_stem = material_to_stem[mat.name_full]
+            elif mat and not standardize_mat:
+                mat_stem = mat.name
+            else:
+                mat_stem = "material" if slot_idx == 0 else f"material{slot_idx + 1}"
 
-        shader_name = mat_stem
+            shader_name = mat_stem
+            mesh_name = f"{obj.name}_{slot_idx}" if is_multi_mat else obj.name
 
-        rigid_link = getattr(obj.kongor, "bonelink", -1)
-        has_skin_weights = bool(bones and any(v.weights for v in unique_verts))
-        mode = 1 if has_skin_weights else (2 if rigid_link >= 0 else 0)
+            rigid_link = getattr(obj.kongor, "bonelink", -1)
+            has_skin_weights = bool(bones and any(v.weights for v in unique_verts))
+            mode = 1 if has_skin_weights else (2 if rigid_link >= 0 else 0)
 
-        k2_mesh = K2Mesh(
-            mesh_index=len(k2_meshes),
-            name=obj.name,
-            shader_name=shader_name,
-            mode=mode,
-            bonelink=rigid_link,
-            bmin=mesh_bbox.bmin,
-            bmax=mesh_bbox.bmax,
-            vertices=[v.position for v in unique_verts],
-            faces=clean_faces,
-            normals=[v.normal for v in unique_verts],
-            uv_channels=[[v.uvs[0] for v in unique_verts]] if (unique_verts and unique_verts[0].uvs) else [],
-            color_channels=[[v.colors[0] for v in unique_verts]] if (unique_verts and unique_verts[0].colors) else [],
-        )
+            k2_mesh = K2Mesh(
+                mesh_index=len(k2_meshes),
+                name=mesh_name,
+                shader_name=shader_name,
+                mode=mode,
+                bonelink=rigid_link,
+                bmin=mesh_bbox.bmin,
+                bmax=mesh_bbox.bmax,
+                vertices=[v.position for v in unique_verts],
+                faces=clean_faces,
+                normals=[v.normal for v in unique_verts],
+                uv_channels=[[v.uvs[0] for v in unique_verts]] if (unique_verts and unique_verts[0].uvs) else [],
+                color_channels=[[v.colors[0] for v in unique_verts]] if (unique_verts and unique_verts[0].colors) else [],
+            )
 
-        if mode == 1:
-            k2_mesh.blended_links = [
-                K2BlendedLink(
-                    weights=[w[1] for w in v.weights],
-                    indexes=[w[0] for w in v.weights]
-                )
-                for v in unique_verts
-            ]
-        elif mode == 2:
-            k2_mesh.single_links = [
-                (v.weights[0][0] if v.weights else rigid_link) for v in unique_verts
-            ]
+            if mode == 1:
+                k2_mesh.blended_links = [
+                    K2BlendedLink(
+                        weights=[w[1] for w in v.weights],
+                        indexes=[w[0] for w in v.weights]
+                    )
+                    for v in unique_verts
+                ]
+            elif mode == 2:
+                k2_mesh.single_links = [
+                    (v.weights[0][0] if v.weights else rigid_link) for v in unique_verts
+                ]
 
-        k2_meshes.append(k2_mesh)
+            k2_meshes.append(k2_mesh)
         if apply_modifiers:
             eval_obj.to_mesh_clear()
 
@@ -641,20 +656,43 @@ def export_k2_model_file(
 
         mdf_filename = os.path.join(model_dir, f"{model_name}.mdf")
         model_rel = f"{model_name}.model"
+
+        mdf_anims: List[K2AnimationDef] = []
+        clips_dir = os.path.join(model_dir, "clips")
+        if os.path.isdir(clips_dir):
+            for clip_filename in sorted(os.listdir(clips_dir)):
+                if clip_filename.lower().endswith(".clip"):
+                    anim_name = os.path.splitext(clip_filename)[0]
+                    if anim_name.startswith(f"{model_name}_"):
+                        anim_name = anim_name[len(model_name) + 1:]
+                    is_loop = anim_name in ("idle", "run", "walk", "flail", "stun", "bored", "teleport")
+                    mdf_anims.append(
+                        K2AnimationDef(
+                            name=anim_name,
+                            clip_file=f"clips/{clip_filename}",
+                            loop=is_loop,
+                            fps=30.0,
+                        )
+                    )
+
+        if not mdf_anims:
+            def_clip = "clips/idle.clip" if os.path.exists(os.path.join(clips_dir, "idle.clip")) else f"clips/{model_name}_idle.clip"
+            mdf_anims = [
+                K2AnimationDef(
+                    name="idle",
+                    clip_file=def_clip,
+                    loop=True,
+                    fps=30.0,
+                )
+            ]
+
         mdf = K2ModelDefinition(
             model_file=model_rel,
             model_name=f"{model_name}.model",
             default_skin="default",
             model_type="K2",
             skin_refs=skin_refs,
-            anims=[
-                K2AnimationDef(
-                    name="idle",
-                    clip_file=f"clips/{model_name}_idle.clip",
-                    loop=True,
-                    fps=30.0,
-                )
-            ],
+            anims=mdf_anims,
         )
         with open(mdf_filename, "w", encoding="utf-8") as f:
             f.write(write_mdf_xml(mdf))
