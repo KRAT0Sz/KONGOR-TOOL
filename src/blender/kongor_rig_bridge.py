@@ -536,6 +536,25 @@ class KONGOR_OT_add_k2_sockets(Operator):
             bpy.ops.object.mode_set(mode='EDIT')
             ebones = arm_obj.data.edit_bones
 
+            # Calculate biped frame for orientation-invariant, properly scaled socket placement
+            pelvis_b = ebones.get("Bip01 Pelvis") or ebones.get("pelvis")
+            head_b = ebones.get("Bip01 Head") or ebones.get("head")
+            r_thigh = ebones.get("Bip01 R Thigh") or ebones.get("thigh.r")
+            l_thigh = ebones.get("Bip01 L Thigh") or ebones.get("thigh.l")
+
+            if pelvis_b and head_b:
+                spine_vec = head_b.head - pelvis_b.head
+                spine_len = max(spine_vec.length, 1.0)
+                up_dir = spine_vec.normalized()
+                lat_vec = (r_thigh.head - l_thigh.head) if (r_thigh and l_thigh) else Vector((-1.0, 0.0, 0.0))
+                right_dir = lat_vec.normalized()
+                fwd_dir = right_dir.cross(up_dir).normalized()
+            else:
+                spine_len = 50.0
+                up_dir = Vector((0.0, 1.0, 0.0))
+                right_dir = Vector((-1.0, 0.0, 0.0))
+                fwd_dir = Vector((0.0, 0.0, -1.0))
+
             added_count = 0
             for s_name, parent_name, offset in K2_SOCKETS_DEF:
                 s_bone = ebones.get(s_name)
@@ -548,12 +567,36 @@ class KONGOR_OT_add_k2_sockets(Operator):
                     elif "Head" in parent_name:
                         parent_bone = ebones.get("Bip01 Neck") or ebones.get("Bip01 Spine1")
 
+                # Compute standard, human-visible socket coordinates
+                if s_name == "_bone_overhead" and head_b:
+                    target_head = head_b.head + up_dir * (spine_len * 0.75)
+                    target_tail = target_head + up_dir * (spine_len * 0.3)
+                elif s_name == "_bone_chest" and parent_bone:
+                    target_head = parent_bone.head + fwd_dir * (spine_len * 0.25)
+                    target_tail = target_head + fwd_dir * (spine_len * 0.2)
+                elif s_name == "_bone_lefteye" and head_b:
+                    target_head = head_b.head + fwd_dir * (spine_len * 0.18) - right_dir * (spine_len * 0.07) + up_dir * (spine_len * 0.08)
+                    target_tail = target_head + fwd_dir * (spine_len * 0.1)
+                elif s_name == "_bone_righteye" and head_b:
+                    target_head = head_b.head + fwd_dir * (spine_len * 0.18) + right_dir * (spine_len * 0.07) + up_dir * (spine_len * 0.08)
+                    target_tail = target_head + fwd_dir * (spine_len * 0.1)
+                elif parent_bone:
+                    if s_bone and s_bone.length >= 1.0:
+                        target_head = s_bone.head
+                        target_tail = s_bone.tail
+                    else:
+                        hand_dir = (parent_bone.tail - parent_bone.head).normalized() if parent_bone.length > 0 else up_dir
+                        target_head = parent_bone.tail
+                        target_tail = target_head + hand_dir * (spine_len * 0.25)
+                else:
+                    target_head = Vector((0.0, 0.0, 0.0))
+                    target_tail = Vector((0.0, 1.0, 0.0))
+
                 if not s_bone:
                     if parent_bone:
                         s_bone = ebones.new(s_name)
-                        scale_fac = max(parent_bone.length, 1.0)
-                        s_bone.head = parent_bone.tail + Vector((offset[0] * scale_fac, offset[1] * scale_fac, offset[2] * scale_fac))
-                        s_bone.tail = s_bone.head + Vector((0.0, 0.2 * scale_fac, 0.0))
+                        s_bone.head = target_head
+                        s_bone.tail = target_tail
                         s_bone.parent = parent_bone
                         s_bone.use_deform = True
                         s_bone.use_connect = False
@@ -561,9 +604,17 @@ class KONGOR_OT_add_k2_sockets(Operator):
                 else:
                     if parent_bone and s_bone.parent != parent_bone:
                         s_bone.parent = parent_bone
+                    if s_bone.length < 1.0 or s_name in ("_bone_overhead", "_bone_chest", "_bone_lefteye", "_bone_righteye"):
+                        s_bone.head = target_head
+                        s_bone.tail = target_tail
                     s_bone.use_deform = True
 
             bpy.ops.object.mode_set(mode='OBJECT')
+            # Enable visible in-front display and names
+            arm_obj.show_in_front = True
+            arm_obj.data.show_names = True
+            arm_obj.data.display_type = 'OCTAHEDRAL'
+
             if orig_active:
                 context.view_layer.objects.active = orig_active
 
