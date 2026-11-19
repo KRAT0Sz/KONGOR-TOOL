@@ -2,13 +2,13 @@ import os
 import pathlib
 import pytest
 
-def test_arp_structure_and_presets():
+def test_kongor_rig_structure_and_presets():
     repo_root = pathlib.Path(__file__).parent.parent
-    arp_dir = repo_root / "src" / "auto_rig_pro"
-    assert arp_dir.exists(), "src/auto_rig_pro directory missing"
+    kongor_rig_dir = repo_root / "src" / "kongor_rig"
+    assert kongor_rig_dir.exists(), "src/kongor_rig directory missing"
     
     # Check essential code modules
-    src_code_dir = arp_dir / "src"
+    src_code_dir = kongor_rig_dir / "src"
     for module_name in [
         "auto_rig.py",
         "auto_rig_remap.py",
@@ -18,15 +18,15 @@ def test_arp_structure_and_presets():
         "rig_functions.py",
     ]:
         p = src_code_dir / module_name
-        assert p.exists(), f"ARP module missing: {module_name}"
+        assert p.exists(), f"KONGOR Rig module missing: {module_name}"
 
     # Check blend presets
-    arm_presets = arp_dir / "armature_presets"
+    arm_presets = kongor_rig_dir / "armature_presets"
     assert (arm_presets / "human.blend").exists()
     assert (arm_presets / "master.blend").exists()
 
     # Check K2 Biped remap preset
-    bmap_file = arp_dir / "remap_presets" / "k2_biped.bmap"
+    bmap_file = kongor_rig_dir / "remap_presets" / "k2_biped.bmap"
     assert bmap_file.exists(), "k2_biped.bmap missing from remap_presets"
 
     lines = [line.strip() for line in bmap_file.read_text(encoding="utf-8").splitlines()]
@@ -39,47 +39,46 @@ def test_arp_structure_and_presets():
     assert "Bip01 L UpperArm" in lines
     assert "Bip01 R UpperArm" in lines
 
-def test_package_extension_includes_arp():
+def test_package_extension_includes_kongor_rig():
     from scripts.package_extension import build_package
-    # Test packaging script logic by building or inspecting files_to_pack
     repo_root = pathlib.Path(__file__).parent.parent
     src_dir = repo_root / "src"
-    arp_dir = src_dir / "auto_rig_pro"
+    kongor_rig_dir = src_dir / "kongor_rig"
     
-    # Verify arp files glob correctly
-    arp_files = [f for f in arp_dir.rglob("*") if f.is_file() and not any(p in ("__pycache__", ".vscode") for p in f.parts) and f.suffix not in (".pyc", ".pyo")]
-    assert len(arp_files) > 30, f"Expected >30 ARP files, found {len(arp_files)}"
+    # Verify kongor_rig files glob correctly
+    rig_files = [f for f in kongor_rig_dir.rglob("*") if f.is_file() and not any(p in ("__pycache__", ".vscode") for p in f.parts) and f.suffix not in (".pyc", ".pyo")]
+    assert len(rig_files) > 30, f"Expected >30 KONGOR Rig files, found {len(rig_files)}"
 
 def test_kongor_rig_branding():
     repo_root = pathlib.Path(__file__).parent.parent
     src_dir = repo_root / "src"
     
     # Check auto_rig.py
-    auto_rig_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig.py").read_text(encoding="utf-8")
+    auto_rig_text = (src_dir / "kongor_rig" / "src" / "auto_rig.py").read_text(encoding="utf-8")
     assert "bl_label = 'KONGOR Rig'" in auto_rig_text
     assert "bl_category = 'KONGOR Rig'" in auto_rig_text
 
     # Check auto_rig_smart.py
-    smart_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig_smart.py").read_text(encoding="utf-8")
+    smart_text = (src_dir / "kongor_rig" / "src" / "auto_rig_smart.py").read_text(encoding="utf-8")
     assert 'bl_label = "KONGOR Rig: Smart"' in smart_text
     assert 'bl_category = "KONGOR Rig"' in smart_text
 
     # Check auto_rig_remap.py
-    remap_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig_remap.py").read_text(encoding="utf-8")
+    remap_text = (src_dir / "kongor_rig" / "src" / "auto_rig_remap.py").read_text(encoding="utf-8")
     assert 'bl_label = "KONGOR Rig: Remap"' in remap_text
     assert 'bl_category = "KONGOR Rig"' in remap_text
 
     # Check auto_rig_ge.py
-    ge_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig_ge.py").read_text(encoding="utf-8")
+    ge_text = (src_dir / "kongor_rig" / "src" / "auto_rig_ge.py").read_text(encoding="utf-8")
     assert 'bl_label = "KONGOR Rig: Export"' in ge_text
     assert 'bl_category = "KONGOR Rig"' in ge_text
 
     # Check auto_rig_prefs.py
-    prefs_text = (src_dir / "auto_rig_pro" / "src" / "auto_rig_prefs.py").read_text(encoding="utf-8")
+    prefs_text = (src_dir / "kongor_rig" / "src" / "auto_rig_prefs.py").read_text(encoding="utf-8")
     assert "default='KONGOR Rig'" in prefs_text
 
-    # Check auto_rig_pro __init__.py
-    init_text = (src_dir / "auto_rig_pro" / "__init__.py").read_text(encoding="utf-8")
+    # Check kongor_rig __init__.py
+    init_text = (src_dir / "kongor_rig" / "__init__.py").read_text(encoding="utf-8")
     assert '"name": "KONGOR Rig"' in init_text
     assert 'text="KONGOR Rig FBX (.fbx)"' in init_text
 

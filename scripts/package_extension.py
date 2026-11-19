@@ -59,10 +59,10 @@ def build_package():
                     continue
                 files_to_pack.append((f, str(rel).replace("\\", "/")))
 
-    # 6. Integrated Auto-Rig Pro module and presets
-    arp_dir = src_dir / "auto_rig_pro"
-    if arp_dir.exists():
-        for f in arp_dir.rglob("*"):
+    # 6. Integrated KONGOR Rig module and presets
+    kongor_rig_dir = src_dir / "kongor_rig"
+    if kongor_rig_dir.exists():
+        for f in kongor_rig_dir.rglob("*"):
             if f.is_file():
                 rel = f.relative_to(src_dir)
                 # Skip caches, vscode configs, temporary files

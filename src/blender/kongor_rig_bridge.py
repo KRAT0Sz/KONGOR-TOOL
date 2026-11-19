@@ -21,36 +21,36 @@ def is_arp_available() -> bool:
     )
 
 def try_register_internal_arp() -> bool:
-    """Attempt to register the internal AutoRigPro package bundled with KONGOR Tool."""
+    """Attempt to register the internal KONGOR Rig package bundled with KONGOR Tool."""
     global _arp_registered
     if _arp_registered:
         return True
 
     if hasattr(bpy.types, "ARP_OT_build_bones") or hasattr(bpy.types, "ARP_OT_retarget"):
-        print("[KONGOR TOOL] Auto-Rig Pro is already loaded in Blender environment.")
+        print("[KONGOR TOOL] KONGOR Rig is already loaded in Blender environment.")
         return True
 
     try:
-        from .. import auto_rig_pro
-        auto_rig_pro.register()
+        from .. import kongor_rig
+        kongor_rig.register()
         _arp_registered = True
         return True
     except Exception as e:
-        print(f"[KONGOR TOOL] Notice: Auto-Rig Pro internal registration: {e}")
+        print(f"[KONGOR TOOL] Notice: KONGOR Rig internal registration: {e}")
         return False
 
 def try_unregister_internal_arp():
-    """Unregister internal AutoRigPro module if loaded."""
+    """Unregister internal KONGOR Rig module if loaded."""
     global _arp_registered
     if not _arp_registered:
         return
 
     try:
-        from .. import auto_rig_pro
-        auto_rig_pro.unregister()
+        from .. import kongor_rig
+        kongor_rig.unregister()
         _arp_registered = False
     except Exception as e:
-        print(f"[KONGOR TOOL] Error unregistering Auto-Rig Pro: {e}")
+        print(f"[KONGOR TOOL] Error unregistering KONGOR Rig: {e}")
 
 def is_k2_armature(obj: bpy.types.Object) -> bool:
     """Detect if an object is a K2 game armature."""
@@ -106,7 +106,7 @@ class KONGOR_OT_arp_bind(Operator):
 
         preset_file = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
-            "auto_rig_pro",
+            "kongor_rig",
             "remap_presets",
             "k2_biped.bmap",
         )
@@ -239,7 +239,7 @@ class KONGOR_OT_arp_apply_k2_preset(Operator):
     def execute(self, context):
         preset_file = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
-            "auto_rig_pro",
+            "kongor_rig",
             "remap_presets",
             "k2_biped.bmap",
         )
