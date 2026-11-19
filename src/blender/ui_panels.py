@@ -48,7 +48,7 @@ class KONGOR_MT_main_menu(bpy.types.Menu):
         layout.separator()
         layout.operator("kongor.inspect_scene", text="Inspect Scene Objects", icon="INFO")
         layout.separator()
-        layout.operator("kongor.uninstall", text="Uninstall Extension...", icon="TRASH")
+        layout.operator("kongor.uninstall", text="Manage Extension...", icon="PREFERENCES")
 
 def draw_viewport_header_menu(self, context):
     layout = self.layout

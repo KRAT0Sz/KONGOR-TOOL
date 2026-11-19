@@ -7,7 +7,6 @@ Clean Architecture without legacy baggage.
 import bpy
 from bpy.props import (
     BoolProperty,
-    EnumProperty,
     IntProperty,
     PointerProperty,
 )
@@ -35,15 +34,6 @@ class KongorModelImportSettings(bpy.types.PropertyGroup):
     )
 
 class KongorModelExportSettings(bpy.types.PropertyGroup):
-    target_engine: EnumProperty(
-        name="Project KONGOR",
-        description="Select HoN engine target and material shader format",
-        items=[
-            ("HON_PBT", "HoN x64 PBT (Classic S2)", "Heroes of Newerth x64 PBT (Project Bradley) native classic shaders"),
-            ("HON_REBORN", "HoN Reborn (PBR)", "Heroes of Newerth Reborn modern PBR shaders"),
-        ],
-        default="Project KONGOR",
-    )
     flip_v: BoolProperty(
         name="Flip UV (V-Axis)",
         description="Invert V texture coordinate (1.0 - V) for K2 Engine standard",
@@ -116,9 +106,7 @@ class KONGOR_AddonPreferences(bpy.types.AddonPreferences):
         box.label(text="KONGOR TOOL v5.0.0", icon="TOOL_SETTINGS")
         box.label(text="Heroes of Newerth K2 Engine Model & Animation (.model / .clip) Tool")
         box.separator()
-        row = box.row()
-        row.alert = True
-        row.operator("kongor.uninstall", text="Uninstall", icon="TRASH")
+        box.label(text="To update, disable, or uninstall, use the official Blender Extensions menu above.", icon="INFO")
 
 classes = (
     KongorModelImportSettings,

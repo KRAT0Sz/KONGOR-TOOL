@@ -26,7 +26,6 @@ class KONGOR_OT_import_model(bpy.types.Operator, ImportHelper):
         settings = context.scene.kongor_export
         box = layout.box()
         box.label(text="Export Options", icon="EXPORT")
-        box.prop(settings, "target_engine")
         box.prop(settings, "apply_modifiers")
         box.prop(settings, "export_deform_only")
         box.prop(settings, "export_materials")
@@ -62,7 +61,6 @@ class KONGOR_OT_export_model(bpy.types.Operator, ExportHelper):
         settings = context.scene.kongor_export
         box = layout.box()
         box.label(text="Export Options", icon="EXPORT")
-        box.prop(settings, "target_engine")
         box.prop(settings, "apply_modifiers")
         box.prop(settings, "export_deform_only")
         box.prop(settings, "export_materials")
@@ -362,7 +360,6 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         col.prop(settings_imp, "flip_v")
         col.prop(settings_imp, "bones_in_front")
         col.prop(settings_imp, "show_bone_names")
-        col.prop(settings_exp, "target_engine")
         col.prop(settings_exp, "apply_modifiers")
         col.prop(settings_exp, "export_materials")
         col.prop(settings_exp, "export_mdf")
@@ -428,88 +425,26 @@ class KONGOR_OT_dialog(bpy.types.Operator):
             if not settings_obj.is_collision_surface:
                 obj_box.prop(settings_obj, "bonelink")
 
-        # 5. Maintenance / Uninstall
+        # 5. Extension Management
         maint_box = layout.box()
-        maint_box.label(text="Maintenance:", icon="PREFERENCES")
+        maint_box.label(text="Extension:", icon="PREFERENCES")
         row = maint_box.row()
-        row.alert = True
-        row.operator("kongor.uninstall", text="Uninstall Extension", icon="TRASH")
+        row.operator("kongor.uninstall", text="Manage Extension in Preferences", icon="PREFERENCES")
 
 class KONGOR_OT_uninstall(bpy.types.Operator):
-    """Uninstall KONGOR TOOL extension and remove files from Blender"""
+    """Safely open Blender Preferences to manage or uninstall KONGOR TOOL"""
     bl_idname = "kongor.uninstall"
-    bl_label = "Uninstall KONGOR TOOL"
+    bl_label = "Manage / Uninstall KONGOR TOOL"
     bl_options = {"REGISTER", "INTERNAL"}
 
-    def invoke(self, context, event):
-        return context.window_manager.invoke_confirm(self, event)
-
     def execute(self, context):
-        import shutil
-        import pathlib
-
-        addon_dir = pathlib.Path(__file__).resolve().parent.parent
-        root_pkg = __package__.rsplit(".blender", 1)[0] if ".blender" in __package__ else __package__
-        pkg_id = "kongor_tool"
-
-        def deferred_uninstall():
-            uninstalled = False
-
-            # 1. Blender 4.2+ Extension Uninstaller
-            if hasattr(bpy.ops, "extensions") and hasattr(bpy.ops.extensions, "package_uninstall"):
-                target_repo_dir = None
-                if hasattr(bpy.context.preferences, "extensions"):
-                    for repo in bpy.context.preferences.extensions.repos:
-                        try:
-                            if pathlib.Path(repo.directory).resolve() == addon_dir.parent.resolve() or repo.module == addon_dir.parent.name:
-                                target_repo_dir = repo.directory
-                                break
-                        except Exception:
-                            pass
-
-                if not target_repo_dir and hasattr(bpy.context.preferences, "extensions"):
-                    for repo in bpy.context.preferences.extensions.repos:
-                        if (pathlib.Path(repo.directory) / pkg_id).exists() or repo.module == "user_default":
-                            target_repo_dir = repo.directory
-                            break
-
-                if target_repo_dir:
-                    try:
-                        bpy.ops.extensions.package_uninstall(pkg_id=pkg_id, repo_directory=target_repo_dir)
-                        uninstalled = True
-                    except Exception:
-                        pass
-
-            # 2. Legacy Add-on Remove operator
-            if not uninstalled and hasattr(bpy.ops, "preferences") and hasattr(bpy.ops.preferences, "addon_remove"):
-                try:
-                    bpy.ops.preferences.addon_remove(module=root_pkg)
-                    uninstalled = True
-                except Exception:
-                    pass
-
-            # 3. Direct disk cleanup fallback
-            if not uninstalled:
-                try:
-                    try:
-                        from . import unregister
-                        unregister()
-                    except Exception:
-                        pass
-
-                    if addon_dir.exists() and (addon_dir / "blender_manifest.toml").exists():
-                        shutil.rmtree(addon_dir, ignore_errors=True)
-                except Exception:
-                    pass
-
-            return None
-
-        self.report({"INFO"}, "Uninstalling KONGOR TOOL...")
-        if hasattr(bpy.app, "timers") and hasattr(bpy.app.timers, "register"):
-            bpy.app.timers.register(deferred_uninstall, first_interval=0.05)
-        else:
-            deferred_uninstall()
-
+        try:
+            bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
+            if hasattr(context.preferences, "active_section"):
+                context.preferences.active_section = "EXTENSIONS"
+        except Exception:
+            pass
+        self.report({"INFO"}, "Preferences opened: Manage or uninstall KONGOR TOOL from Extensions.")
         return {"FINISHED"}
 
 # ---------------------------------------------------------------------------

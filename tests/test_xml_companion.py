@@ -57,44 +57,10 @@ def test_mdf_xml_roundtrip():
     assert parsed.anims[0].loop is True
     assert parsed.anims[1].clip_file == "walk.clip"
 
-def test_s2_material_specification():
-    """Verifies S2Exporter-compliant 3-phase material generation with parameters and samplers."""
+def test_hon_material_specification():
+    """Verifies native Heroes of Newerth S2 material generation."""
     mat = K2Material(
         name="",
-        shader="/shared/shaders/heroes/hero_diffuse_normal_mrao_team_envmap_tinted.shader",
-        vDiffuseColor="1 1 1",
-        fSpecularLevel="1.5",
-        fGlossiness="32",
-        fOpacity="1.0",
-        diffuse_texture="textures/color.tga",
-        normal_texture="textures/normal.tga",
-        mrao_texture="textures/mrao.tga",
-        cube_texture="/world/sky/panorama/1.tga",
-    )
-    xml_str = write_material_xml(mat)
-    assert '<?xml version="1.0" encoding="UTF-8"?>' in xml_str
-    assert '<material>' in xml_str
-    assert '<parameters shader="/shared/shaders/heroes/hero_diffuse_normal_mrao_team_envmap_tinted.shader"' in xml_str
-    assert '<phase name="shadow" cull="back" blend="alphatest">' in xml_str
-    assert '<sampler name="diffuse" texture="textures/color.tga" />' in xml_str
-    assert '<phase name="color" cull="back" blend="alphatest">' in xml_str
-    assert '<sampler name="normalmap" texture="textures/normal.tga" />' in xml_str
-    assert '<sampler name="mrao" texture="textures/mrao.tga" />' in xml_str
-    assert '<samplercube name="cube" texture="/world/sky/panorama/1.tga" />' in xml_str
-    assert '<phase name="fade"' in xml_str
-    assert '<multipass cull="back" blend="translucent">' in xml_str
-
-    parsed = read_material_xml(xml_str)
-    assert parsed.diffuse_texture == "textures/color.tga"
-    assert parsed.normal_texture == "textures/normal.tga"
-    assert parsed.mrao_texture == "textures/mrao.tga"
-    assert len(parsed.phases) == 3
-
-def test_hon_pbt_material_specification():
-    """Verifies native Heroes of Newerth x64 PBT (Project Bradley) S2 material generation."""
-    mat = K2Material(
-        name="",
-        target_engine="HON_PBT",
         vDiffuseColor="1.0000 1.0000 1.0000",
         fSpecularLevel="1.0000",
         fGlossiness="56",
@@ -106,7 +72,7 @@ def test_hon_pbt_material_specification():
         team_texture="team.tga",
         lightmap_texture="glow.tga",
     )
-    xml_str = write_material_xml(mat, target_engine="HON_PBT")
+    xml_str = write_material_xml(mat)
     assert '<?xml version="1.0" encoding="UTF-8"?>' in xml_str
     assert '<material>' in xml_str
     assert '<parameters vDiffuseColor="1.0000 1.0000 1.0000" fSpecularLevel="1.0000" fGlossiness="56" fOpacity="1.0000" fReflect="1.0000" />' in xml_str
