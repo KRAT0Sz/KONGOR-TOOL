@@ -14,17 +14,20 @@ class KONGOR_MT_rigging_menu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
-        layout.operator("kongor.add_k2_rig", text="Add K2 Game Human Rig", icon="OUTLINER_OB_ARMATURE")
+        layout.operator("kongor.generate_k2_skeleton", text="Generate K2 Game Armature from KONGOR Rig", icon="ARMATURE_DATA")
+        layout.operator("kongor.conform_k2_hierarchy", text="Conform Hierarchy to K2 Standard (Root -> Bip01)", icon="CON_CHILDOF")
+        layout.operator("kongor.add_k2_sockets", text="Add Standard K2 Sockets (_bone_*)", icon="PLUS")
+        layout.operator("kongor.isolate_k2_deform", text="Isolate K2 Deform Bones", icon="CHECKMARK")
         layout.separator()
         layout.operator("kongor.arp_apply_k2_preset", text="Load K2 Biped Preset (.bmap)", icon="PRESET")
         layout.operator("kongor.arp_bind", text="Bind K2 Armature to KONGOR Rig", icon="CONSTRAINT_BONE")
         layout.operator("kongor.arp_unbind", text="Unbind K2 Armature", icon="X")
         layout.operator("kongor.arp_bake", text="Bake KONGOR Rig to K2 Skeleton", icon="ACTION")
         layout.separator()
-        layout.operator("kongor.setup_k2_deform", text="Prepare Rig for K2 Export", icon="CHECKMARK")
-        layout.operator("kongor.remap_to_k2", text="Remap Bones to K2 Standard (Bip01)", icon="SYNTAX_ON").reverse = False
-        layout.operator("kongor.remap_to_k2", text="Remap Bones to Def (def_)", icon="SYNTAX_OFF").reverse = True
+        layout.operator("kongor.remap_to_k2_universal", text="Universal Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
+        layout.operator("kongor.remap_to_k2_universal", text="Universal Remap to Def (def_)", icon="SYNTAX_OFF").reverse = True
         layout.separator()
+        layout.operator("kongor.add_k2_rig", text="Add K2 Game Human Rig", icon="OUTLINER_OB_ARMATURE")
         layout.operator("kongor.fit_bone_size", text="Auto-Fit Bone Sizes", icon="ARROW_LEFTRIGHT")
         layout.separator()
         layout.menu("rgc.add_armature", text="Rig Creator Presets...", icon="FILE_BLEND")

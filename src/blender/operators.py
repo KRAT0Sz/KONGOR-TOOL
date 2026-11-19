@@ -379,15 +379,20 @@ class KONGOR_OT_dialog(bpy.types.Operator):
             if act.kongor.mesh_type == "NORMAL":
                 mesh_box.prop(act.kongor, "bonelink")
 
-        # 3. KONGOR Rig & Game Armature Tools
+        # 3. KONGOR Rig & K2 Skeleton Tools
         rig_k2_box = layout.box()
-        rig_k2_box.label(text="KONGOR Rig & Game Armature:", icon="ARMATURE_DATA")
+        rig_k2_box.label(text="KONGOR Rig & K2 Skeleton Tools:", icon="ARMATURE_DATA")
+        row_gen = rig_k2_box.row(align=True)
+        row_gen.operator("kongor.generate_k2_skeleton", text="Generate K2 Armature", icon="ARMATURE_DATA")
+        row_gen.operator("kongor.conform_k2_hierarchy", text="Conform K2 Hierarchy", icon="CON_CHILDOF")
+
         row_k2 = rig_k2_box.row(align=True)
-        row_k2.operator("kongor.add_k2_rig", text="Add K2 Game Rig", icon="OUTLINER_OB_ARMATURE")
-        row_k2.operator("kongor.setup_k2_deform", text="Prepare for K2", icon="CHECKMARK")
+        row_k2.operator("kongor.add_k2_sockets", text="Add K2 Sockets", icon="PLUS")
+        row_k2.operator("kongor.isolate_k2_deform", text="Isolate Deform", icon="CHECKMARK")
+
         row_remap = rig_k2_box.row(align=True)
-        row_remap.operator("kongor.remap_to_k2", text="Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
-        row_remap.operator("kongor.remap_to_k2", text="To Rig Creator (def_)", icon="SYNTAX_OFF").reverse = True
+        row_remap.operator("kongor.remap_to_k2_universal", text="Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
+        row_remap.operator("kongor.remap_to_k2_universal", text="Reverse to Def", icon="SYNTAX_OFF").reverse = True
 
         # 4. KONGOR Rig Pipeline Section
         arp_box = layout.box()

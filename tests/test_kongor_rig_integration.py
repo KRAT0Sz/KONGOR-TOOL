@@ -86,3 +86,41 @@ def test_kongor_rig_branding():
     ui_text = (src_dir / "blender" / "ui_panels.py").read_text(encoding="utf-8")
     assert 'bl_label = "KONGOR Rig"' in ui_text
     assert 'text="KONGOR Rig Tools"' in ui_text
+
+def test_k2_bone_structure_and_hierarchy_rules():
+    repo_root = pathlib.Path(__file__).parent.parent
+    bridge_file = repo_root / "src" / "blender" / "kongor_rig_bridge.py"
+    assert bridge_file.exists(), "kongor_rig_bridge.py missing"
+
+    text = bridge_file.read_text(encoding="utf-8")
+    assert "K2_PARENT_RULES = {" in text
+    assert '"Bip01": "Root"' in text
+    assert '"Bip01 Pelvis": "Bip01"' in text
+    assert '"Bip01 Spine": "Bip01 Pelvis"' in text
+    assert '"Bip01 Spine1": "Bip01 Spine"' in text
+    assert '"Bip01 Head": "Bip01 Neck"' in text
+    assert '"_bone_weapon01": "Bip01 R Hand"' in text
+    assert '"_bone_weapon02": "Bip01 L Hand"' in text
+    assert '"_bone_overhead": "Bip01 Head"' in text
+    assert '"_bone_chest": "Bip01 Spine1"' in text
+
+    # Verify K2 bridge operators
+    assert "class KONGOR_OT_conform_k2_hierarchy" in text
+    assert "class KONGOR_OT_add_k2_sockets" in text
+    assert "class KONGOR_OT_generate_k2_skeleton" in text
+    assert "class KONGOR_OT_isolate_k2_deform" in text
+    assert "class KONGOR_OT_remap_to_k2_universal" in text
+
+def test_k2_export_pipeline_auto_rig_ge():
+    repo_root = pathlib.Path(__file__).parent.parent
+    ge_file = repo_root / "src" / "kongor_rig" / "src" / "auto_rig_ge.py"
+    assert ge_file.exists()
+
+    ge_text = ge_file.read_text(encoding="utf-8")
+    assert "def rename_for_k2():" in ge_text
+    assert "def add_k2_sockets(" in ge_text
+    assert "scn.arp_engine_type == 'K2'" in ge_text
+    assert "default='K2'" in ge_text
+    assert "arp_rename_for_k2" in ge_text
+    assert "arp_k2_add_sockets" in ge_text
+

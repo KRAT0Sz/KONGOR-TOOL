@@ -647,7 +647,12 @@ class ARP_OT_set_humanoid_rig(Operator):
             # set humanoid
             _set_humanoid_rig(rig_name, _rig_add_name, True, self)
             
-            if scn.arp_engine_type == 'UNREAL':
+            if scn.arp_engine_type == 'K2':
+                if getattr(scn, 'arp_rename_for_k2', True):
+                    rename_for_k2()
+                if getattr(scn, 'arp_k2_add_sockets', True):
+                    add_k2_sockets()
+            elif scn.arp_engine_type == 'UNREAL':
                 if scn.arp_rename_for_ue:
                     rename_for_ue()
                     # Mannequin Axes?
@@ -1353,7 +1358,12 @@ class ARP_OT_export(Operator):
                 # Set the humanoid armature
                 _set_humanoid_rig(self.armature_name, self.armature_add_name, False, self)
                 
-                if scn.arp_engine_type == 'UNREAL':
+                if scn.arp_engine_type == 'K2':
+                    if getattr(scn, 'arp_rename_for_k2', True):
+                        rename_for_k2()
+                    if getattr(scn, 'arp_k2_add_sockets', True):
+                        add_k2_sockets()
+                elif scn.arp_engine_type == 'UNREAL':
                     if scn.arp_rename_for_ue:
                         rename_for_ue()
 
@@ -1977,7 +1987,7 @@ class ARP_OT_unbind_humanoid(Operator):
 def _save_preset(self):
     scn = bpy.context.scene
     
-    settings_list = ['arp_export_rig_type', 'arp_engine_type', 'arp_ue4', 'arp_rename_for_ue', 'arp_rename_for_godot', 'arp_export_twist', 'arp_twist_fac', 'arp_keep_bend_bones', 'arp_full_facial', 'arp_push_bend', 'arp_mannequin_axes', 'arp_ue_ik', 'arp_ue_ik_anim', 'arp_ue_root_motion', 'arp_only_containing', 'arp_export_name_string', 'arp_units_x100', 'arp_bake_anim', 'arp_bake_type', 'arp_frame_range_type', 'arp_export_start_frame', 'arp_export_end_frame', 'arp_bake_only_active', 'arp_ignore_linked_actions','arp_simplify_fac', 'arp_ge_bake_sample', 'arp_ge_startend_keying', 'arp_global_scale', 'arp_mesh_smooth_type', 'arp_use_tspace', 'arp_bone_axis_primary_export', 'arp_bone_axis_secondary_export', 'arp_fix_fbx_rot', 'arp_fix_fbx_matrix', 'arp_init_fbx_rot', 'arp_init_fbx_rot_mesh', 'arp_export_tex', 'arp_ge_sel_only', 'arp_ge_sel_bones_only', 'arp_see_actions', 'arp_export_noparent', 'arp_export_rig_name', 'arp_export_act_name', 'arp_export_file_separator', 'arp_export_actlist_idx', 'arp_export_use_actlist', 'arp_export_separate_fbx', 'arp_export_renaming', 'arp_rename_fp', 'arp_custom_export_script', 'arp_apply_mods', 'arp_apply_subsurf', 'arp_retro_ge_UE_twist_pos', 'arp_retro_ge_frame_range', 'arp_export_bake_axis_convert', 'arp_ge_add_dummy_mesh', 'arp_ge_force_rest_pose_export', 'arp_ge_gltf_format', 'arp_ge_gltf_all_inf', 'arp_ge_gltf_sk_normals', 'arp_ge_gltf_sk_tangents', 'arp_ge_gltf_unitsx100', 'arp_ge_gltf_sample_anim', 'arp_export_triangulate', 'arp_ge_vcol_type', 'arp_prioritize_active_color', 'arp_ge_master_traj', 'arp_ge_export_metacarp', 'arp_export_actlist']
+    settings_list = ['arp_export_rig_type', 'arp_engine_type', 'arp_ue4', 'arp_rename_for_ue', 'arp_rename_for_k2', 'arp_k2_add_sockets', 'arp_rename_for_godot', 'arp_export_twist', 'arp_twist_fac', 'arp_keep_bend_bones', 'arp_full_facial', 'arp_push_bend', 'arp_mannequin_axes', 'arp_ue_ik', 'arp_ue_ik_anim', 'arp_ue_root_motion', 'arp_only_containing', 'arp_export_name_string', 'arp_units_x100', 'arp_bake_anim', 'arp_bake_type', 'arp_frame_range_type', 'arp_export_start_frame', 'arp_export_end_frame', 'arp_bake_only_active', 'arp_ignore_linked_actions','arp_simplify_fac', 'arp_ge_bake_sample', 'arp_ge_startend_keying', 'arp_global_scale', 'arp_mesh_smooth_type', 'arp_use_tspace', 'arp_bone_axis_primary_export', 'arp_bone_axis_secondary_export', 'arp_fix_fbx_rot', 'arp_fix_fbx_matrix', 'arp_init_fbx_rot', 'arp_init_fbx_rot_mesh', 'arp_export_tex', 'arp_ge_sel_only', 'arp_ge_sel_bones_only', 'arp_see_actions', 'arp_export_noparent', 'arp_export_rig_name', 'arp_export_act_name', 'arp_export_file_separator', 'arp_export_actlist_idx', 'arp_export_use_actlist', 'arp_export_separate_fbx', 'arp_export_renaming', 'arp_rename_fp', 'arp_custom_export_script', 'arp_apply_mods', 'arp_apply_subsurf', 'arp_retro_ge_UE_twist_pos', 'arp_retro_ge_frame_range', 'arp_export_bake_axis_convert', 'arp_ge_add_dummy_mesh', 'arp_ge_force_rest_pose_export', 'arp_ge_gltf_format', 'arp_ge_gltf_all_inf', 'arp_ge_gltf_sk_normals', 'arp_ge_gltf_sk_tangents', 'arp_ge_gltf_unitsx100', 'arp_ge_gltf_sample_anim', 'arp_export_triangulate', 'arp_ge_vcol_type', 'arp_prioritize_active_color', 'arp_ge_master_traj', 'arp_ge_export_metacarp', 'arp_export_actlist']
     
     export_settings = {}
     for setting in settings_list:
@@ -9133,6 +9143,237 @@ def rename_for_godot():
         print("  restored.")
         
         
+
+
+def rename_for_k2():
+    print('\n[KONGOR Rig] Renaming for K2 Engine (Heroes of Newerth Standard Bip01)')
+
+    actions_fist = {}
+    for action in bpy.data.actions:
+        if not check_id_root(action):
+            continue
+        if 'rig_fist' in action.name:
+            fc_list = [fc.data_path for fc in action.fcurves]
+            actions_fist[action] = fc_list
+
+    rig_humanoid = get_object('rig_humanoid')
+    if not rig_humanoid:
+        return
+
+    spine_bones_list = []
+    for idx in range(1, 33):
+        str_idx = '%02d' % idx
+        spine_bones_list.append("spine_" + str_idx + ".x")
+
+    for pbone in rig_humanoid.pose.bones:
+        name = pbone.name
+        if is_bend_bone(name) or is_custom_bone(name) or 'arp_ge_helper' in pbone.bone.keys():
+            continue
+
+        side = "L" if name.endswith(".l") else ("R" if name.endswith(".r") else "")
+
+        # Legs
+        if name.startswith("thigh_stretch") or name.startswith("thigh."):
+            pbone.name = f"Bip01 {side} Thigh"
+        elif name.startswith("leg_stretch") or name.startswith("leg."):
+            pbone.name = f"Bip01 {side} Calf"
+        elif name.startswith("foot."):
+            pbone.name = f"Bip01 {side} Foot"
+        elif name.startswith("toes_01.") or name.startswith("toes."):
+            pbone.name = f"Bip01 {side} Toe0"
+
+        # Arms
+        elif name.startswith("shoulder."):
+            pbone.name = f"Bip01 {side} Clavicle"
+        elif name.startswith("arm_stretch") or (name.startswith("arm.") and not name.startswith("arm_twist")):
+            pbone.name = f"Bip01 {side} UpperArm"
+        elif name.startswith("forearm_stretch") or (name.startswith("forearm.") and not name.startswith("forearm_twist")):
+            pbone.name = f"Bip01 {side} Forearm"
+        elif name.startswith("hand."):
+            pbone.name = f"Bip01 {side} Hand"
+
+        # Fingers - Thumb
+        elif "thumb1" in name:
+            pbone.name = f"Bip01 {side} Finger0"
+        elif "thumb2" in name:
+            pbone.name = f"Bip01 {side} Finger01"
+        elif "thumb3" in name:
+            pbone.name = f"Bip01 {side} Finger02"
+
+        # Fingers - Index
+        elif "index1" in name and "_base" not in name:
+            pbone.name = f"Bip01 {side} Finger1"
+        elif "index2" in name:
+            pbone.name = f"Bip01 {side} Finger11"
+        elif "index3" in name:
+            pbone.name = f"Bip01 {side} Finger12"
+
+        # Fingers - Middle
+        elif "middle1" in name and "_base" not in name:
+            pbone.name = f"Bip01 {side} Finger2"
+        elif "middle2" in name:
+            pbone.name = f"Bip01 {side} Finger21"
+        elif "middle3" in name:
+            pbone.name = f"Bip01 {side} Finger22"
+
+        # Fingers - Ring
+        elif "ring1" in name and "_base" not in name:
+            pbone.name = f"Bip01 {side} Finger3"
+        elif "ring2" in name:
+            pbone.name = f"Bip01 {side} Finger31"
+        elif "ring3" in name:
+            pbone.name = f"Bip01 {side} Finger32"
+
+        # Fingers - Pinky
+        elif "pinky1" in name and "_base" not in name:
+            pbone.name = f"Bip01 {side} Finger4"
+        elif "pinky2" in name:
+            pbone.name = f"Bip01 {side} Finger41"
+        elif "pinky3" in name:
+            pbone.name = f"Bip01 {side} Finger42"
+
+        # Neck & Head
+        elif "neck" in name and "subneck" not in name:
+            pbone.name = "Bip01 Neck"
+        elif "head" in name:
+            pbone.name = "Bip01 Head"
+
+        # Spines
+        elif name in spine_bones_list:
+            idx = spine_bones_list.index(name) + 1
+            if idx == 1:
+                pbone.name = "Bip01 Spine"
+            elif idx == 2:
+                pbone.name = "Bip01 Spine1"
+            elif idx == 3:
+                pbone.name = "Bip01 Spine2"
+            else:
+                pbone.name = f"Bip01 Spine{idx - 1}"
+
+        # Root & Pelvis
+        elif "root.x" in name:
+            pbone.name = "Bip01"
+        elif "c_traj" in name:
+            pbone.name = "Root"
+        elif "hips" in name:
+            pbone.name = "Bip01 Pelvis"
+
+    # Enforce strict K2 DAG parent hierarchy
+    try:
+        bpy.ops.object.mode_set(mode='EDIT')
+        ebones = rig_humanoid.data.edit_bones
+
+        root_b = ebones.get("Root")
+        if not root_b:
+            root_b = ebones.new("Root")
+            root_b.head = (0.0, 0.0, 0.0)
+            root_b.tail = (0.0, 0.1, 0.0)
+            root_b.parent = None
+
+        bip_b = ebones.get("Bip01")
+        if bip_b and root_b:
+            bip_b.parent = root_b
+
+        pelvis_b = ebones.get("Bip01 Pelvis")
+        if pelvis_b:
+            if bip_b:
+                pelvis_b.parent = bip_b
+            elif root_b:
+                pelvis_b.parent = root_b
+
+        spine_b = ebones.get("Bip01 Spine")
+        if spine_b and pelvis_b:
+            spine_b.parent = pelvis_b
+
+        spine1_b = ebones.get("Bip01 Spine1")
+        if spine1_b and spine_b:
+            spine1_b.parent = spine_b
+
+        chest_parent = spine1_b or spine_b or pelvis_b
+
+        neck_b = ebones.get("Bip01 Neck")
+        if neck_b and chest_parent:
+            neck_b.parent = chest_parent
+
+        head_b = ebones.get("Bip01 Head")
+        if head_b and neck_b:
+            head_b.parent = neck_b
+
+        for s in ("L", "R"):
+            clav = ebones.get(f"Bip01 {s} Clavicle")
+            if clav and chest_parent:
+                clav.parent = chest_parent
+            uarm = ebones.get(f"Bip01 {s} UpperArm")
+            if uarm and clav:
+                uarm.parent = clav
+            farm = ebones.get(f"Bip01 {s} Forearm")
+            if farm and uarm:
+                farm.parent = uarm
+            hand = ebones.get(f"Bip01 {s} Hand")
+            if hand and farm:
+                hand.parent = farm
+
+            thigh = ebones.get(f"Bip01 {s} Thigh")
+            if thigh and pelvis_b:
+                thigh.parent = pelvis_b
+            calf = ebones.get(f"Bip01 {s} Calf")
+            if calf and thigh:
+                calf.parent = thigh
+            foot = ebones.get(f"Bip01 {s} Foot")
+            if foot and calf:
+                foot.parent = calf
+            toe = ebones.get(f"Bip01 {s} Toe0")
+            if toe and foot:
+                toe.parent = foot
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+    except Exception as e:
+        print(f"[KONGOR Rig] Hierarchy enforcement notice: {e}")
+
+    # restore the rig_fist action data path
+    if len(actions_fist) > 0:
+        for action in actions_fist:
+            if not check_id_root(action):
+                continue
+            for i, fc in enumerate(action.fcurves):
+                fc.data_path = actions_fist[action][i]
+
+
+def add_k2_sockets(armature_obj=None):
+    if armature_obj is None:
+        armature_obj = get_object('rig_humanoid')
+    if not armature_obj or armature_obj.type != 'ARMATURE':
+        return
+
+    try:
+        from mathutils import Vector
+        bpy.ops.object.mode_set(mode='EDIT')
+        ebones = armature_obj.data.edit_bones
+
+        sockets_def = [
+            ("_bone_weapon01", "Bip01 R Hand", (0.0, 0.05, 0.0)),
+            ("_bone_weapon02", "Bip01 L Hand", (0.0, 0.05, 0.0)),
+            ("_bone_overhead", "Bip01 Head", (0.0, 0.0, 0.35)),
+            ("_bone_chest", "Bip01 Spine1", (0.0, 0.15, 0.0)),
+            ("_bone_lefteye", "Bip01 Head", (0.035, 0.08, 0.05)),
+            ("_bone_righteye", "Bip01 Head", (-0.035, 0.08, 0.05)),
+        ]
+
+        for s_name, parent_name, offset in sockets_def:
+            if s_name not in ebones:
+                parent_bone = ebones.get(parent_name)
+                if parent_bone:
+                    s_bone = ebones.new(s_name)
+                    s_bone.head = parent_bone.tail + Vector(offset)
+                    s_bone.tail = s_bone.head + Vector((0.0, 0.05, 0.0))
+                    s_bone.parent = parent_bone
+                    s_bone.use_deform = True
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+    except Exception as e:
+        print(f"[KONGOR Rig] Socket addition notice: {e}")
+
+
 ###########  UI PANEL  ###################
 
 class ARP_PT_auto_rig_GE_panel(Panel):
@@ -9617,6 +9858,13 @@ def export_panel_draw(self, context):
                         col.label(text='are required to match the')
                         col.label(text="UE Mannequin hierarchy!")                    
                     
+        if scn.arp_engine_type == 'K2' and scn.arp_export_rig_type == 'HUMANOID':
+            box = layout.box()
+            box.label(text="K2 Engine (Heroes of Newerth) Options:")
+            col = box.column(align=True)
+            col.prop(scn, "arp_rename_for_k2", text="Rename to K2 Biped (Bip01)")
+            col.prop(scn, "arp_k2_add_sockets", text="Add Standard K2 Sockets")
+
         if scn.arp_engine_type == 'GODOT' and scn.arp_export_rig_type == 'HUMANOID':
             box = layout.box()
             box.label(text="Godot Options:")
@@ -9800,14 +10048,17 @@ def register():
         ('UNIVERSAL', 'Universal', 'Universal rig type, simple bones hierarchy for any creature (dog, spider...)')
         ), name = 'Unity Rig Type Export', description='Rig type to export', default='UNIVERSAL', options={'HIDDEN'})
     bpy.types.Scene.arp_engine_type = EnumProperty(items=(        
+        ('K2', 'K2 Engine (HoN)', 'Export character optimized for K2 Engine with Bip01 hierarchy and sockets'),
         ('UNITY', 'Unity', 'Show settings to export to Unity engine'),
         ('UNREAL', 'Unreal Engine', 'Show settings to export to Unreal Engine'),
         ('GODOT', 'Godot', 'Show settings to export to Godot engine'),
         ('OTHERS', 'Others', 'Show universal settings to export to any engine'),
         ), name = "Game Engine Type", description="Game engine to export the character", 
-        default='UNITY', update=update_engine_type, options={'HIDDEN'})
+        default='K2', update=update_engine_type, options={'HIDDEN'})
     bpy.types.Scene.arp_ue4 = BoolProperty(name="UE4", description='Export as a humanoid for UE4', default=False, options={'HIDDEN'})#backward-compatibility                                                                                                                                   
     bpy.types.Scene.arp_rename_for_ue = BoolProperty(name="Rename for UE", description="Rename bones according to Unreal Engine humanoid names convention", default=True, options={'HIDDEN'})
+    bpy.types.Scene.arp_rename_for_k2 = BoolProperty(name="Rename for K2", description="Rename bones according to K2 Engine (Heroes of Newerth Bip01) humanoid convention", default=True, options={'HIDDEN'})
+    bpy.types.Scene.arp_k2_add_sockets = BoolProperty(name="Add K2 Sockets", description="Add standard K2 leaf socket bones (_bone_weapon01, _bone_overhead, etc.)", default=True, options={'HIDDEN'})
     bpy.types.Scene.arp_rename_for_godot = BoolProperty(name="Rename for Godot", description="Rename bones according to Godot humanoid names convention", default=True, options={'HIDDEN'})
     bpy.types.Scene.arp_export_twist = BoolProperty(name='Export Twist', description="If enabled, twist bones are exported. If disabled, they're not exported and the twist weights are transferred to the main weights.\nIf multiple twist bones are used, this is enabled automatically", default=True, options={'HIDDEN'})
     bpy.types.Scene.arp_twist_fac = FloatProperty(name='Twist Amount', description="Influence of the twist bone, only if 1 twist bone if used. Generally 0.5 gives better results since game engines do not support dual quaternions\nIn case of multiple twist bones, this value is ignored since it's no more necessary", default = 0.5, min=0.0, max=1.0, options={'HIDDEN'})
@@ -9921,6 +10172,8 @@ def unregister():
     del bpy.types.Scene.arp_engine_type
     del bpy.types.Scene.arp_ue4                           
     del bpy.types.Scene.arp_rename_for_ue
+    del bpy.types.Scene.arp_rename_for_k2
+    del bpy.types.Scene.arp_k2_add_sockets
     del bpy.types.Scene.arp_rename_for_godot
     del bpy.types.Scene.arp_export_twist
     del bpy.types.Scene.arp_twist_fac
