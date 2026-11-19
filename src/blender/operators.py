@@ -23,13 +23,13 @@ class KONGOR_OT_import_model(bpy.types.Operator, ImportHelper):
 
     def draw(self, context):
         layout = self.layout
-        settings = context.scene.kongor_export
+        settings = context.scene.kongor_import
         box = layout.box()
-        box.label(text="Export Options", icon="EXPORT")
-        box.prop(settings, "apply_modifiers")
-        box.prop(settings, "export_deform_only")
-        box.prop(settings, "export_materials")
-        box.prop(settings, "export_mdf")
+        box.label(text="Import Options", icon="IMPORT")
+        box.prop(settings, "flip_v")
+        box.prop(settings, "build_materials")
+        box.prop(settings, "bones_in_front")
+        box.prop(settings, "show_bone_names")
 
     def execute(self, context):
         settings = context.scene.kongor_import
@@ -61,10 +61,15 @@ class KONGOR_OT_export_model(bpy.types.Operator, ExportHelper):
         settings = context.scene.kongor_export
         box = layout.box()
         box.label(text="Export Options", icon="EXPORT")
+        box.prop(settings, "prop_preset")
+        box.prop(settings, "force_static")
+        box.prop(settings, "remove_hierarchy")
+        box.prop(settings, "copy_textures")
+        box.prop(settings, "export_materials")
+        box.prop(settings, "standardize_material_names")
+        box.prop(settings, "export_mdf")
         box.prop(settings, "apply_modifiers")
         box.prop(settings, "export_deform_only")
-        box.prop(settings, "export_materials")
-        box.prop(settings, "export_mdf")
 
     def execute(self, context):
         settings = context.scene.kongor_export
@@ -357,25 +362,86 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         settings_imp = context.scene.kongor_import
         settings_exp = context.scene.kongor_export
         col = model_box.column(align=True)
+        col.prop(settings_exp, "prop_preset")
+        col.prop(settings_exp, "force_static")
+        col.prop(settings_exp, "remove_hierarchy")
+        col.prop(settings_exp, "copy_textures")
+        col.prop(settings_exp, "export_materials")
+        col.prop(settings_exp, "standardize_material_names")
+        col.prop(settings_exp, "export_mdf")
+        col.prop(settings_exp, "apply_modifiers")
+        col.prop(settings_exp, "export_deform_only")
+        col.operator("kongor.standardize_materials", text="Standardize Materials to K2", icon="MATERIAL")
+        col.separator()
         col.prop(settings_imp, "flip_v")
         col.prop(settings_imp, "bones_in_front")
         col.prop(settings_imp, "show_bone_names")
-        col.prop(settings_exp, "apply_modifiers")
-        col.prop(settings_exp, "export_materials")
-        col.prop(settings_exp, "export_mdf")
-        col.prop(settings_exp, "export_deform_only")
 
-        # 3. K2 Rig Creator & Skeleton Section
+        # Active Mesh Object Settings (matches S2Exporter Mesh Info)
+        act = context.active_object
+        if act and act.type == "MESH":
+            mesh_box = layout.box()
+            mesh_box.label(text="Mesh Info", icon="OBJECT_DATA")
+            col_mesh = mesh_box.column(align=True)
+            col_mesh.prop(act, "name", text="Mesh")
+
+            row_opts = mesh_box.row()
+            row_opts.prop(act.kongor, "exclude_normals")
+            row_opts.prop(act.kongor, "is_roof")
+
+            col_radio = mesh_box.column(align=True)
+            col_radio.prop(act.kongor, "mesh_type", expand=True)
+
+            if act.kongor.mesh_type == "NORMAL":
+                mesh_box.prop(act.kongor, "bonelink")
+            elif act.kongor.mesh_type == "SURF":
+                mesh_box.label(text="Exports as collision surface (_surf polyhedron)", icon="INFO")
+
+            # Material Slots (matches S2Exporter Mesh Info)
+            mat_box = mesh_box.box()
+            mat_box.label(text="Material", icon="MATERIAL")
+            if act.material_slots:
+                for slot in act.material_slots:
+                    mat_box.prop(slot, "material", text="")
+            else:
+                mat_box.label(text="No materials assigned", icon="INFO")
+
+        # 3. KONGOR Rig & K2 Skeleton Tools
         rig_k2_box = layout.box()
-        rig_k2_box.label(text="K2 Rig Creator & Rigging:", icon="ARMATURE_DATA")
-        row_k2 = rig_k2_box.row(align=True)
-        row_k2.operator("kongor.add_k2_rig", text="Add K2 Game Rig", icon="OUTLINER_OB_ARMATURE")
-        row_k2.operator("kongor.setup_k2_deform", text="Prepare for K2", icon="CHECKMARK")
-        row_remap = rig_k2_box.row(align=True)
-        row_remap.operator("kongor.remap_to_k2", text="Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
-        row_remap.operator("kongor.remap_to_k2", text="To Rig Creator (def_)", icon="SYNTAX_OFF").reverse = True
+        rig_k2_box.label(text="KONGOR Rig & K2 Skeleton Tools:", icon="ARMATURE_DATA")
+        row_spawn = rig_k2_box.row(align=True)
+        row_spawn.operator("kongor.add_k2_rig", text="Add Character Rig...", icon="OUTLINER_OB_ARMATURE")
+        row_spawn.operator("kongor.generate_k2_skeleton", text="Generate K2 Armature", icon="ARMATURE_DATA")
 
-        # 4. Skeleton & Bones Display Section
+        row_k2 = rig_k2_box.row(align=True)
+        row_k2.operator("kongor.conform_k2_hierarchy", text="Conform K2 Hierarchy", icon="CON_CHILDOF")
+        row_k2.operator("kongor.add_k2_sockets", text="Add K2 Sockets", icon="PLUS")
+
+        row_remap = rig_k2_box.row(align=True)
+        row_remap.operator("kongor.remap_to_k2_universal", text="Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
+        row_remap.operator("kongor.isolate_k2_deform", text="Isolate Deform", icon="CHECKMARK")
+
+        # 4. KONGOR Rig Pipeline Section
+        arp_box = layout.box()
+        arp_box.label(text="KONGOR Rig Pipeline:", icon="POSE_HLT")
+        if hasattr(context.scene, "kongor_arp"):
+            arp_settings = context.scene.kongor_arp
+            col_arp = arp_box.column(align=True)
+            col_arp.prop(arp_settings, "target_arp_rig", text="Target KONGOR Rig")
+            col_arp.prop(arp_settings, "source_k2_rig", text="Source K2 Armature")
+            row_arp_range = col_arp.row(align=True)
+            row_arp_range.prop(arp_settings, "bake_frame_start", text="Start")
+            row_arp_range.prop(arp_settings, "bake_frame_end", text="End")
+            col_arp.prop(arp_settings, "preserve_socket_bones")
+
+            row_arp_ops = arp_box.row(align=True)
+            row_arp_ops.operator("kongor.arp_apply_k2_preset", text="Load K2 Preset (.bmap)", icon="PRESET")
+            row_arp_ops.operator("kongor.arp_bind", text="Bind K2 to Rig", icon="CONSTRAINT_BONE")
+            row_arp_ops.operator("kongor.arp_unbind", text="Unbind", icon="X")
+
+            arp_box.operator("kongor.arp_bake", text="Bake KONGOR Rig to K2 Skeleton", icon="ACTION")
+
+        # 5. Skeleton & Bones Display Section
         rig_box = layout.box()
         rig_box.label(text="Skeleton & Bones Display:", icon="BONE_DATA")
         target_arms = get_target_armatures(context)
@@ -606,61 +672,88 @@ class KONGOR_OT_setup_k2_deform(bpy.types.Operator):
         return {"FINISHED"}
 
 class KONGOR_OT_add_k2_rig(bpy.types.Operator):
-    """Add a game-ready Rig Creator Human armature configured for K2 Engine"""
+    """Add a professional character armature preset from KONGOR Rig (Human, Quadruped, etc.)"""
     bl_idname = "kongor.add_k2_rig"
-    bl_label = "Add K2 Game Human Rig"
+    bl_label = "Add KONGOR Rig Character"
+    bl_description = "Add professional character armature preset from KONGOR Rig"
     bl_options = {"REGISTER", "UNDO"}
 
-    rig_type: bpy.props.EnumProperty(
-        name="Rig Type",
-        description="Type of K2-compatible armature to generate",
+    preset: bpy.props.EnumProperty(
+        name="Character Preset",
+        description="Character preset to append from KONGOR Rig",
         items=[
-            ("Human For Games", "Human For Games", "Full game-ready human rig with IK/FK controls and deform hierarchy"),
-            ("Human Flat Hierarchy", "Human Flat Hierarchy", "Flat hierarchy human rig optimized for game engines"),
-            ("Basic Human", "Basic Human", "Simplified human skeleton with basic controls"),
+            ("human", "Human (Biped)", "Full biped humanoid character with IK/FK controls and facial setup"),
+            ("dog", "Dog (Quadruped)", "Quadruped canine character rig"),
+            ("horse", "Horse (Quadruped)", "Quadruped equine character rig"),
+            ("bird", "Bird (Avian)", "Avian flying creature rig with wings"),
+            ("free", "Empty / Free Rig", "Blank template rig with root controller"),
         ],
-        default="Human For Games",
-    )
-
-    remap_names: bpy.props.BoolProperty(
-        name="Remap to K2 Bip01 Names",
-        description="Automatically rename deform bones to standard K2 / Heroes of Newerth Bip01 naming",
-        default=True,
+        default="human",
     )
 
     def execute(self, context):
-        if not hasattr(bpy.ops, "rgc") or not hasattr(bpy.ops.rgc, "add_armature"):
-            self.report({"ERROR"}, "Rig Creator module is not loaded.")
+        if hasattr(bpy.ops, "arp") and hasattr(bpy.ops.arp, "append_arp"):
+            try:
+                bpy.ops.arp.append_arp(rig_preset=self.preset)
+                self.report({"INFO"}, f"Successfully added KONGOR Rig ({self.preset.capitalize()})")
+                return {"FINISHED"}
+            except Exception as e:
+                self.report({"ERROR"}, f"Failed to spawn KONGOR Rig preset: {e}")
+                return {"CANCELLED"}
+        else:
+            self.report({"ERROR"}, "KONGOR Rig module is not loaded.")
             return {"CANCELLED"}
 
-        before_objs = set(context.scene.objects)
-        try:
-            bpy.ops.rgc.add_armature(type=self.rig_type)
-        except Exception as e:
-            self.report({"ERROR"}, f"Failed to spawn Rig Creator armature: {e}")
+class KONGOR_OT_standardize_materials(bpy.types.Operator):
+    """Standardize scene/character material names to K2 standard (material, material2, material3...)"""
+    bl_idname = "kongor.standardize_materials"
+    bl_label = "Standardize Materials to K2"
+    bl_description = "Rename materials to canonical K2 Engine naming convention: material, material2, material3..."
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        char_objects = [
+            obj for obj in context.scene.objects
+            if obj.type == "MESH" and not obj.hide_viewport and not obj.name.startswith(
+                ("_bone", "Materiales_RIG_CREATOR", "WGT-", "rig_widget", "cs_", "ctrl_")
+            )
+        ]
+        if not char_objects:
+            char_objects = [
+                obj for obj in context.scene.objects
+                if obj.type == "MESH" and not obj.name.startswith(
+                    ("_bone", "Materiales_RIG_CREATOR", "WGT-", "rig_widget", "cs_", "ctrl_")
+                )
+            ]
+
+        unique_mats = []
+        seen = set()
+        for obj in char_objects:
+            for slot in obj.material_slots:
+                mat = slot.material
+                if mat and mat not in seen:
+                    seen.add(mat)
+                    unique_mats.append(mat)
+
+        if not unique_mats:
+            self.report({"WARNING"}, "No materials found on character meshes.")
             return {"CANCELLED"}
 
-        new_objs = [o for o in context.scene.objects if o not in before_objs]
-        arm_obj = next((o for o in new_objs if o.type == "ARMATURE"), None)
+        renamed_count = 0
+        for idx, mat in enumerate(unique_mats):
+            target_name = "material" if idx == 0 else f"material{idx + 1}"
+            if mat.name != target_name:
+                existing = bpy.data.materials.get(target_name)
+                if existing and existing != mat:
+                    existing.name = f"{target_name}_temp"
+                mat.name = target_name
+                renamed_count += 1
 
-        if arm_obj:
-            context.view_layer.objects.active = arm_obj
-            arm_obj.select_set(True)
-
-            # Ensure deform flags are set
-            bpy.ops.kongor.setup_k2_deform()
-
-            # Remap names if requested
-            if self.remap_names:
-                bpy.ops.kongor.remap_to_k2(reverse=False)
-
-            self.report({"INFO"}, f"Successfully added K2 Rig: {arm_obj.name}")
-            return {"FINISHED"}
-
-        self.report({"INFO"}, "Rig added to scene.")
+        self.report({"INFO"}, f"Standardized {len(unique_mats)} material(s) to K2 convention ({renamed_count} renamed).")
         return {"FINISHED"}
 
 classes = (
+    KONGOR_OT_standardize_materials,
     KONGOR_OT_import_model,
     KONGOR_OT_export_model,
     KONGOR_OT_import_clip,

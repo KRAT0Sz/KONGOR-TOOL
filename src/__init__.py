@@ -1,7 +1,7 @@
 """
 KONGOR TOOL - K2 Engine Blender Add-on / Extension
 Clean Architecture implementation for Blender >=4.2 / 5.0 (Python 3.11+ / 3.13+)
-Includes integrated Third-party K2 Rig Creator.
+Integrated KONGOR Rig (v3.71.25) and K2 Engine Skeleton Pipeline.
 """
 
 bl_info = {
@@ -9,24 +9,17 @@ bl_info = {
     "author": "KONGOR TOOL Team",
     "version": (5, 0, 0),
     "blender": (4, 2, 0),
-    "location": "File > Import-Export | 3D Viewport > Sidebar > KONGOR Tool",
-    "description": "K2 Engine (.model / .clip) Clean Architecture Import, Export, and Rigging Tool",
+    "location": "File > Import-Export | 3D Viewport > Header > KONGOR Tool",
+    "description": "K2 Engine (.model / .clip) Model & Animation pipeline with integrated KONGOR Rig",
     "category": "Import-Export",
 }
 
 def register():
     from . import blender
-    from . import rigcreator
     blender.register()
-    rigcreator.register()
 
 def unregister():
-    from . import rigcreator
     from . import blender
-    try:
-        rigcreator.unregister()
-    except Exception:
-        pass
     blender.unregister()
 
 if __name__ == "__main__":

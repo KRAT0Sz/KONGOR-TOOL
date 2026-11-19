@@ -127,3 +127,36 @@ def test_s2_mdf_skin_specification():
     assert parsed.skin_refs[2].mesh_name == "mat3"
     assert len(parsed.anims) == 1
 
+def test_foliage_material_double_sided_cull_none():
+    """Verifies that foliage and double-sided tree materials generate cull='CULL_NONE'."""
+    mat = K2Material(
+        name="leaves",
+        diffuse_texture="leaves_color.tga",
+        cull="CULL_NONE",
+    )
+    xml_str = write_material_xml(mat)
+    assert 'cull="CULL_NONE"' in xml_str
+    parsed = read_material_xml(xml_str)
+    assert parsed.cull == "CULL_NONE"
+
+def test_copy_textures_material_sampler_resolution():
+    """Verifies that custom textures copied by the exporter resolve in .material XML."""
+    mat = K2Material(
+        name="hero",
+        diffuse_texture="am_persona_body_color_psd_5cb0e9ee.png",
+        normal_texture="am_persona_body_normal_psd_9e63dddf.png",
+        specular_texture="am_persona_body_specmask_psd_5551ad00.png",
+        team_texture="team.tga",
+        lightmap_texture="glow.tga",
+    )
+    xml_str = write_material_xml(mat)
+    assert 'am_persona_body_color_psd_5cb0e9ee.png' in xml_str
+    assert 'am_persona_body_normal_psd_9e63dddf.png' in xml_str
+    assert 'am_persona_body_specmask_psd_5551ad00.png' in xml_str
+    parsed = read_material_xml(xml_str)
+    assert parsed.diffuse_texture == "am_persona_body_color_psd_5cb0e9ee.png"
+    assert parsed.normal_texture == "am_persona_body_normal_psd_9e63dddf.png"
+    assert parsed.specular_texture == "am_persona_body_specmask_psd_5551ad00.png"
+
+
+

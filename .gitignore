@@ -8,4 +8,11 @@ __pycache__/
 development_plan/
 uv.lock
 dist/
+*.rar
+*.zip
+*.7z
 tests/wasteland_twitch/
+model/
+tools/
+
+

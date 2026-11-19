@@ -31,6 +31,7 @@ class K2Material:
     fGlossiness: str = "56"
     fOpacity: str = "1.0000"
     fReflect: str = "1.0000"
+    cull: str = "CULL_BACK"
     diffuse_texture: str = ""
     normal_texture: str = ""
     specular_texture: str = ""
@@ -110,6 +111,13 @@ def read_material_xml(xml_text: str) -> K2Material:
 
         phases.append(K2MaterialPhase(name=p_name, lighting_spec=lighting, cull=cull, blend=blend, samplers=samplers))
 
+    mat_cull = "CULL_BACK"
+    if phases:
+        first_cull = phases[0].cull
+        if first_cull:
+            uc = first_cull.upper()
+            mat_cull = uc if uc.startswith("CULL_") else f"CULL_{uc}"
+
     return K2Material(
         name=mat_name,
         vDiffuseColor=v_diffuse,
@@ -117,6 +125,7 @@ def read_material_xml(xml_text: str) -> K2Material:
         fGlossiness=f_gloss,
         fOpacity=f_opac,
         fReflect=f_reflect,
+        cull=mat_cull,
         diffuse_texture=diffuse,
         normal_texture=normal,
         specular_texture=specular,
@@ -176,6 +185,7 @@ def write_material_xml(mat: K2Material) -> str:
     team_name = os.path.basename(team) if team else "team.tga"
     glow_name = os.path.basename(lightmap) if lightmap else "glow.tga"
 
+    cull_mode = getattr(mat, "cull", "CULL_BACK") or "CULL_BACK"
     ps_shader = "mesh_color_unit_team_lightmap_spec"
     sampler_props = 'repeat_u="true" repeat_v="true" scale_u="1.0000" scale_v="1.0000" fps="15" mipmaps="true" fullquality="false" nocompress="false" filtering="true" border="false"'
 
@@ -187,21 +197,21 @@ def write_material_xml(mat: K2Material) -> str:
 
     # 1. Shadow Phase
     lines.extend([
-        '\t<phase name="shadow" vs="mesh_shadow_opacity" ps="mesh_shadow_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="CULL_BACK" alphatest="true">',
+        f'\t<phase name="shadow" vs="mesh_shadow_opacity" ps="mesh_shadow_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="{cull_mode}" alphatest="true">',
         f'\t\t<sampler name="opacity" texture="{diff_name}" {sampler_props} />',
         '\t</phase>',
     ])
 
     # 2. Depth Phase
     lines.extend([
-        '\t<phase name="depth" vs="mesh_depth_opacity" ps="mesh_depth_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="CULL_BACK" alphatest="true">',
+        f'\t<phase name="depth" vs="mesh_depth_opacity" ps="mesh_depth_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="{cull_mode}" alphatest="true">',
         f'\t\t<sampler name="opacity" texture="{diff_name}" {sampler_props} />',
         '\t</phase>',
     ])
 
     # 3. Color Phase
     lines.extend([
-        f'\t<phase name="color" vs="mesh_color_unit" ps="{ps_shader}" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="CULL_BACK" alphatest="true" layer="0">',
+        f'\t<phase name="color" vs="mesh_color_unit" ps="{ps_shader}" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="false" cull="{cull_mode}" alphatest="true" layer="0">',
         f'\t\t<sampler name="diffuse" texture="{diff_name}" {sampler_props} />',
         f'\t\t<sampler name="normalmap" texture="{norm_name}" {sampler_props} />',
         f'\t\t<sampler name="specular" texture="{spec_name}" {sampler_props} />',
@@ -212,9 +222,9 @@ def write_material_xml(mat: K2Material) -> str:
 
     # 4. Fade Phase with Translucent Multipass
     lines.extend([
-        '\t<phase name="fade" vs="mesh_depth_opacity" ps="mesh_depth_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="true" cull="CULL_BACK" alphatest="true" layer="0" colorwrite="false" alphawrite="false" depthwrite="true">',
+        f'\t<phase name="fade" vs="mesh_depth_opacity" ps="mesh_depth_opacity" srcblend="BLEND_ONE" dstblend="BLEND_ZERO" translucent="true" cull="{cull_mode}" alphatest="true" layer="0" colorwrite="false" alphawrite="false" depthwrite="true">',
         f'\t\t<sampler name="opacity" texture="{diff_name}" {sampler_props} />',
-        f'\t\t<multipass vs="mesh_color_unit" ps="{ps_shader}" srcblend="BLEND_SRC_ALPHA" dstblend="BLEND_ONE_MINUS_SRC_ALPHA" translucent="true" cull="CULL_BACK" alphatest="false" layer="0">',
+        f'\t\t<multipass vs="mesh_color_unit" ps="{ps_shader}" srcblend="BLEND_SRC_ALPHA" dstblend="BLEND_ONE_MINUS_SRC_ALPHA" translucent="true" cull="{cull_mode}" alphatest="false" layer="0">',
         f'\t\t\t<sampler name="diffuse" texture="{diff_name}" {sampler_props} />',
         f'\t\t\t<sampler name="normalmap" texture="{norm_name}" {sampler_props} />',
         f'\t\t\t<sampler name="specular" texture="{spec_name}" {sampler_props} />',

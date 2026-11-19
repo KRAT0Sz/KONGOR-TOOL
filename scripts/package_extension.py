@@ -46,13 +46,13 @@ def build_package():
     for py_file in blender_dir.glob("*.py"):
         files_to_pack.append((py_file, f"blender/{py_file.name}"))
 
-    # 5. Integrated Rig Creator module and assets
-    rigcreator_dir = src_dir / "rigcreator"
-    if rigcreator_dir.exists():
-        for f in rigcreator_dir.rglob("*"):
+    # 5. Integrated KONGOR Rig module and presets
+    kongor_rig_dir = src_dir / "kongor_rig"
+    if kongor_rig_dir.exists():
+        for f in kongor_rig_dir.rglob("*"):
             if f.is_file():
                 rel = f.relative_to(src_dir)
-                # Skip caches, vscode configs, and screenshots
+                # Skip caches, vscode configs, temporary files
                 if any(part in ("__pycache__", ".vscode", "screenshots") for part in rel.parts):
                     continue
                 if f.suffix in (".pyc", ".pyo"):
