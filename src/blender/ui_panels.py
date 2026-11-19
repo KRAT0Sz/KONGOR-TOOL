@@ -41,6 +41,7 @@ class KONGOR_MT_main_menu(bpy.types.Menu):
         layout.separator()
         layout.operator("kongor.import_model", text="Import K2 Model (.model)", icon="IMPORT")
         layout.operator("kongor.export_model", text="Export K2 Model (.model)", icon="EXPORT")
+        layout.operator("kongor.standardize_materials", text="Standardize Materials to K2 (material, material2...)", icon="MATERIAL")
         layout.separator()
         layout.operator("kongor.import_clip", text="Import K2 Clip (.clip)", icon="ANIM")
         layout.operator("kongor.export_clip", text="Export K2 Clip (.clip)", icon="RENDER_ANIMATION")

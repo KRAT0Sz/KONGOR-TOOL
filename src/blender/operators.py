@@ -363,8 +363,10 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         col.prop(settings_exp, "force_static")
         col.prop(settings_exp, "apply_modifiers")
         col.prop(settings_exp, "export_materials")
+        col.prop(settings_exp, "standardize_material_names")
         col.prop(settings_exp, "export_mdf")
         col.prop(settings_exp, "export_deform_only")
+        col.operator("kongor.standardize_materials", text="Standardize Materials to K2", icon="MATERIAL")
         col.separator()
         col.prop(settings_imp, "flip_v")
         col.prop(settings_imp, "bones_in_front")
@@ -677,7 +679,56 @@ class KONGOR_OT_add_k2_rig(bpy.types.Operator):
             self.report({"ERROR"}, "KONGOR Rig module is not loaded.")
             return {"CANCELLED"}
 
+class KONGOR_OT_standardize_materials(bpy.types.Operator):
+    """Standardize scene/character material names to K2 standard (material, material2, material3...)"""
+    bl_idname = "kongor.standardize_materials"
+    bl_label = "Standardize Materials to K2"
+    bl_description = "Rename materials to canonical K2 Engine naming convention: material, material2, material3..."
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        char_objects = [
+            obj for obj in context.scene.objects
+            if obj.type == "MESH" and not obj.hide_viewport and not obj.name.startswith(
+                ("_bone", "Materiales_RIG_CREATOR", "WGT-", "rig_widget", "cs_", "ctrl_")
+            )
+        ]
+        if not char_objects:
+            char_objects = [
+                obj for obj in context.scene.objects
+                if obj.type == "MESH" and not obj.name.startswith(
+                    ("_bone", "Materiales_RIG_CREATOR", "WGT-", "rig_widget", "cs_", "ctrl_")
+                )
+            ]
+
+        unique_mats = []
+        seen = set()
+        for obj in char_objects:
+            for slot in obj.material_slots:
+                mat = slot.material
+                if mat and mat not in seen:
+                    seen.add(mat)
+                    unique_mats.append(mat)
+
+        if not unique_mats:
+            self.report({"WARNING"}, "No materials found on character meshes.")
+            return {"CANCELLED"}
+
+        renamed_count = 0
+        for idx, mat in enumerate(unique_mats):
+            target_name = "material" if idx == 0 else f"material{idx + 1}"
+            if mat.name != target_name:
+                existing = bpy.data.materials.get(target_name)
+                if existing and existing != mat:
+                    existing.name = f"{target_name}_temp"
+                mat.name = target_name
+                renamed_count += 1
+
+        self.report({"INFO"}, f"Standardized {len(unique_mats)} material(s) to K2 convention ({renamed_count} renamed).")
+        return {"FINISHED"}
+
 classes = (
+    KONGOR_OT_standardize_materials,
     KONGOR_OT_import_model,
     KONGOR_OT_export_model,
     KONGOR_OT_import_clip,

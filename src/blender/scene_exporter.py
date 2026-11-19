@@ -197,13 +197,15 @@ def export_k2_model_file(
     k2_surfaces: List[K2Surface] = []
     overall_bbox = BoundingBox()
 
-    # Determine character meshes to export (prefer selected character meshes if any)
+    # Determine character meshes to export (prefer selected, then visible character meshes)
     selected_char = [obj for obj in context.selected_objects if _is_character_mesh(obj)]
-    char_objects = selected_char if selected_char else [obj for obj in context.scene.objects if _is_character_mesh(obj)]
+    visible_char = [obj for obj in context.scene.objects if _is_character_mesh(obj) and not obj.hide_viewport and not obj.hide_get()]
+    char_objects = selected_char if selected_char else (visible_char if visible_char else [obj for obj in context.scene.objects if _is_character_mesh(obj)])
 
-    # Determine collision surfaces (prefer selected surfaces if any)
+    # Determine collision surfaces (prefer selected, then visible surfaces)
     selected_surfs = [obj for obj in context.selected_objects if _is_collision_surface(obj)]
-    surf_objects = selected_surfs if selected_surfs else [obj for obj in context.scene.objects if _is_collision_surface(obj)]
+    visible_surfs = [obj for obj in context.scene.objects if _is_collision_surface(obj) and not obj.hide_viewport and not obj.hide_get()]
+    surf_objects = selected_surfs if selected_surfs else (visible_surfs if visible_surfs else [obj for obj in context.scene.objects if _is_collision_surface(obj)])
 
     # Collect materials in first-seen order from character meshes
     unique_materials: List[bpy.types.Material] = []
@@ -217,12 +219,17 @@ def export_k2_model_file(
                 seen_mat_keys.add(mat.name_full)
                 unique_materials.append(mat)
 
+    standardize_mat = getattr(settings, "standardize_material_names", True) if settings else True
+
     for idx, mat in enumerate(unique_materials):
-        mat_lower = mat.name.lower()
-        if mat_lower.startswith(("material", "mat")) or mat.name.startswith("Material"):
+        if standardize_mat:
             stem = "material" if idx == 0 else f"material{idx + 1}"
         else:
-            stem = mat.name
+            mat_lower = mat.name.lower()
+            if mat_lower.startswith(("material", "mat")) or mat.name.startswith("Material"):
+                stem = "material" if idx == 0 else f"material{idx + 1}"
+            else:
+                stem = mat.name
         material_to_stem[mat.name_full] = stem
 
     # 2a. Export Collision Surfaces
@@ -357,7 +364,7 @@ def export_k2_model_file(
         mat = obj.data.materials[0] if (obj.data.materials and obj.data.materials[0]) else None
         if mat and mat.name_full in material_to_stem:
             mat_stem = material_to_stem[mat.name_full]
-        elif mat:
+        elif mat and not standardize_mat:
             mat_stem = mat.name
         else:
             mat_stem = "material"

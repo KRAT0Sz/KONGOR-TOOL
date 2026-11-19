@@ -67,6 +67,11 @@ class KongorModelExportSettings(bpy.types.PropertyGroup):
         description="Write companion K2 XML .material files for each exported mesh",
         default=True,
     )
+    standardize_material_names: BoolProperty(
+        name="Standardize Material Names",
+        description="Format exported materials as canonical K2 sequence (material.material, material2.material, material3.material...)",
+        default=True,
+    )
     export_mdf: BoolProperty(
         name="Generate .mdf",
         description="Write companion K2 Model Definition File (.mdf)",
