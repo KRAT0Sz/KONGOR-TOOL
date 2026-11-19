@@ -149,6 +149,31 @@ KONGOR_RIG_DEFORM_TO_K2 = {
     "c_hand_fk.r": "Bip01 R Hand",
     "hand_r": "Bip01 R Hand",
 
+    # Dota / Source Engine Biped Mappings
+    "spine_0": "Bip01 Spine",
+    "spine_1": "Bip01 Spine1",
+    "spine_2": "Bip01 Spine2",
+    "spine_3": "Bip01 Spine3",
+    "neck_0": "Bip01 Neck",
+    "clavicle_L": "Bip01 L Clavicle",
+    "clavicle_R": "Bip01 R Clavicle",
+    "arm_upper_L": "Bip01 L UpperArm",
+    "arm_upper_R": "Bip01 R UpperArm",
+    "arm_lower_L": "Bip01 L Forearm",
+    "arm_lower_R": "Bip01 R Forearm",
+    "hand_L": "Bip01 L Hand",
+    "hand_R": "Bip01 R Hand",
+    "leg_upper_L": "Bip01 L Thigh",
+    "leg_upper_R": "Bip01 R Thigh",
+    "leg_lower_L": "Bip01 L Calf",
+    "leg_lower_R": "Bip01 R Calf",
+    "ankle_L": "Bip01 L Foot",
+    "ankle_R": "Bip01 R Foot",
+    "ball_L": "Bip01 L Toe0",
+    "ball_R": "Bip01 R Toe0",
+    "weapon_0_R": "_bone_weapon01",
+    "weapon_0_L": "_bone_weapon02",
+
     # Left Leg
     "thigh.l": "Bip01 L Thigh",
     "def_thigh.l": "Bip01 L Thigh",
@@ -205,6 +230,19 @@ for side, s_char, k2_side in [("l", "L", "L"), ("r", "R", "R")]:
                 f"def_{f_name}{p_idx}.{side}",
                 f"c_{f_name}{p_idx}.{side}",
                 f"c_{f_name}{p_idx}1.{side}",
+            ]
+            for c in candidates:
+                KONGOR_RIG_DEFORM_TO_K2[c] = k2_target
+
+# Dota / Source style fingers
+for side, s_char, k2_side in [("L", "L", "L"), ("R", "R", "R"), ("l", "L", "L"), ("r", "R", "R")]:
+    for f_idx, f_name in enumerate(["thumb", "index", "middle", "ring", "pinky"]):
+        for p_idx in [0, 1, 2]:
+            k2_finger_num = f"{f_idx}" if p_idx == 0 else f"{f_idx}{p_idx}"
+            k2_target = f"Bip01 {k2_side} Finger{k2_finger_num}"
+            candidates = [
+                f"finger_{f_name}_{p_idx}_{side}",
+                f"{f_name}_{p_idx}_{side}",
             ]
             for c in candidates:
                 KONGOR_RIG_DEFORM_TO_K2[c] = k2_target
@@ -330,16 +368,24 @@ class KONGOR_OT_conform_k2_hierarchy(Operator):
                 root_b.use_deform = True
             root_b.parent = None
 
-            # 2. Bip01
+            # 2. Bip01 (Center-of-mass)
+            pelvis_b = ebones.get("Bip01 Pelvis")
             bip_b = ebones.get("Bip01")
-            if bip_b:
-                bip_b.parent = root_b
+            if not bip_b:
+                bip_b = ebones.new("Bip01")
+                if pelvis_b:
+                    bip_b.head = pelvis_b.head.copy()
+                    tail_offset = 5.0 if pelvis_b.head.length > 50 else 0.1
+                    bip_b.tail = bip_b.head + Vector((0.0, 0.0, tail_offset))
+                else:
+                    bip_b.head = (0.0, 0.0, 1.0)
+                    bip_b.tail = (0.0, 0.0, 1.1)
                 bip_b.use_deform = True
+            bip_b.parent = root_b
 
             # 3. Pelvis
-            pelvis_b = ebones.get("Bip01 Pelvis")
             if pelvis_b:
-                pelvis_b.parent = bip_b if bip_b else root_b
+                pelvis_b.parent = bip_b
                 pelvis_b.use_deform = True
 
             # 4. Spine Chain
@@ -505,8 +551,9 @@ class KONGOR_OT_add_k2_sockets(Operator):
                 if not s_bone:
                     if parent_bone:
                         s_bone = ebones.new(s_name)
-                        s_bone.head = parent_bone.tail + Vector(offset)
-                        s_bone.tail = s_bone.head + Vector((0.0, 0.05, 0.0))
+                        scale_fac = max(parent_bone.length, 1.0)
+                        s_bone.head = parent_bone.tail + Vector((offset[0] * scale_fac, offset[1] * scale_fac, offset[2] * scale_fac))
+                        s_bone.tail = s_bone.head + Vector((0.0, 0.2 * scale_fac, 0.0))
                         s_bone.parent = parent_bone
                         s_bone.use_deform = True
                         s_bone.use_connect = False

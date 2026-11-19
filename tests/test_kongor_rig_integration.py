@@ -104,6 +104,17 @@ def test_k2_bone_structure_and_hierarchy_rules():
     assert '"_bone_overhead": "Bip01 Head"' in text
     assert '"_bone_chest": "Bip01 Spine1"' in text
 
+    # Verify Source / Dota 2 naming mappings
+    assert '"pelvis": "Bip01 Pelvis"' in text
+    assert '"neck_0": "Bip01 Neck"' in text
+    assert '"arm_upper_L": "Bip01 L UpperArm"' in text
+    assert '"leg_upper_R": "Bip01 R Thigh"' in text
+
+    # Verify auto-synthesis of Bip01 in hierarchy
+    assert 'bip_b = ebones.new("Bip01")' in text
+    assert 'bip_b.parent = root_b' in text
+    assert 'pelvis_b.parent = bip_b' in text
+
     # Verify K2 bridge operators
     assert "class KONGOR_OT_conform_k2_hierarchy" in text
     assert "class KONGOR_OT_add_k2_sockets" in text
