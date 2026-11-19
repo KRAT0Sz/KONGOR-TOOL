@@ -13,4 +13,6 @@ dist/
 *.7z
 tests/wasteland_twitch/
 model/
+tools/
+
 
