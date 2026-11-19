@@ -7,6 +7,20 @@ Zero N-Panel and zero Viewport clutter.
 import bpy
 from .operators import get_target_armatures
 
+class KONGOR_MT_arp_menu(bpy.types.Menu):
+    """Auto-Rig Pro & K2 Bridge Menu"""
+    bl_label = "Auto-Rig Pro Bridge"
+    bl_idname = "KONGOR_MT_arp_menu"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("kongor.arp_apply_k2_preset", text="Load K2 Biped Preset (.bmap)", icon="PRESET")
+        layout.separator()
+        layout.operator("kongor.arp_bind", text="Bind K2 Armature to ARP Rig", icon="CONSTRAINT_BONE")
+        layout.operator("kongor.arp_unbind", text="Unbind K2 Armature", icon="X")
+        layout.separator()
+        layout.operator("kongor.arp_bake", text="Bake ARP Animation to K2 Skeleton", icon="ACTION")
+
 class KONGOR_MT_rigging_menu(bpy.types.Menu):
     """Rig Creator & K2 Rigging Tools Menu"""
     bl_label = "K2 Rig Creator"
@@ -23,6 +37,8 @@ class KONGOR_MT_rigging_menu(bpy.types.Menu):
         layout.operator("kongor.fit_bone_size", text="Auto-Fit Bone Sizes", icon="ARROW_LEFTRIGHT")
         layout.separator()
         layout.menu("rgc.add_armature", text="All Rig Creator Presets...", icon="FILE_BLEND")
+        layout.separator()
+        layout.menu("KONGOR_MT_arp_menu", text="Auto-Rig Pro Bridge...", icon="POSE_HLT")
 
 class KONGOR_MT_main_menu(bpy.types.Menu):
     """Top header dropdown menu in 3D Viewport"""
@@ -40,6 +56,7 @@ class KONGOR_MT_main_menu(bpy.types.Menu):
         layout.operator("kongor.export_clip", text="Export K2 Clip (.clip)", icon="RENDER_ANIMATION")
         layout.separator()
         layout.menu("KONGOR_MT_rigging_menu", text="K2 Rig Creator Tools", icon="ARMATURE_DATA")
+        layout.menu("KONGOR_MT_arp_menu", text="Auto-Rig Pro Tools", icon="POSE_HLT")
         layout.separator()
         layout.operator("kongor.toggle_bones", text="Toggle Bones (Show/Hide)", icon="BONE_DATA")
         layout.operator("kongor.toggle_bone_names", text="Toggle Bone Names", icon="SYNTAX_ON")
@@ -96,6 +113,7 @@ class KONGOR_PT_object_panel(bpy.types.Panel):
             box.label(text="Exports as collision surface (_surf polyhedron)", icon="INFO")
 
 classes = (
+    KONGOR_MT_arp_menu,
     KONGOR_MT_rigging_menu,
     KONGOR_MT_main_menu,
     KONGOR_PT_object_panel,

@@ -59,6 +59,19 @@ def build_package():
                     continue
                 files_to_pack.append((f, str(rel).replace("\\", "/")))
 
+    # 6. Integrated Auto-Rig Pro module and presets
+    arp_dir = src_dir / "auto_rig_pro"
+    if arp_dir.exists():
+        for f in arp_dir.rglob("*"):
+            if f.is_file():
+                rel = f.relative_to(src_dir)
+                # Skip caches, vscode configs, temporary files
+                if any(part in ("__pycache__", ".vscode", "screenshots") for part in rel.parts):
+                    continue
+                if f.suffix in (".pyc", ".pyo"):
+                    continue
+                files_to_pack.append((f, str(rel).replace("\\", "/")))
+
     print(f"Packaging {len(files_to_pack)} files into {output_zip.name}...")
     with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for disk_path, arcname in sorted(files_to_pack, key=lambda x: x[1]):

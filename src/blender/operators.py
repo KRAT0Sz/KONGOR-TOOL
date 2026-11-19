@@ -389,7 +389,27 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         row_remap.operator("kongor.remap_to_k2", text="Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
         row_remap.operator("kongor.remap_to_k2", text="To Rig Creator (def_)", icon="SYNTAX_OFF").reverse = True
 
-        # 4. Skeleton & Bones Display Section
+        # 4. Auto-Rig Pro (ARP) & K2 Bridge Section
+        arp_box = layout.box()
+        arp_box.label(text="Auto-Rig Pro & K2 Bridge:", icon="POSE_HLT")
+        if hasattr(context.scene, "kongor_arp"):
+            arp_settings = context.scene.kongor_arp
+            col_arp = arp_box.column(align=True)
+            col_arp.prop(arp_settings, "target_arp_rig", text="Target ARP Rig")
+            col_arp.prop(arp_settings, "source_k2_rig", text="Source K2 Armature")
+            row_arp_range = col_arp.row(align=True)
+            row_arp_range.prop(arp_settings, "bake_frame_start", text="Start")
+            row_arp_range.prop(arp_settings, "bake_frame_end", text="End")
+            col_arp.prop(arp_settings, "preserve_socket_bones")
+
+            row_arp_ops = arp_box.row(align=True)
+            row_arp_ops.operator("kongor.arp_apply_k2_preset", text="Load K2 Preset (.bmap)", icon="PRESET")
+            row_arp_ops.operator("kongor.arp_bind", text="Bind K2 to ARP", icon="CONSTRAINT_BONE")
+            row_arp_ops.operator("kongor.arp_unbind", text="Unbind", icon="X")
+
+            arp_box.operator("kongor.arp_bake", text="Bake ARP Animation to K2 Skeleton", icon="ACTION")
+
+        # 5. Skeleton & Bones Display Section
         rig_box = layout.box()
         rig_box.label(text="Skeleton & Bones Display:", icon="BONE_DATA")
         target_arms = get_target_armatures(context)

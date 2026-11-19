@@ -1,0 +1,204 @@
+c_root_master.x
+Root
+True
+False
+
+c_root.x
+Bip01
+True
+False
+
+c_hips_plate.x
+Bip01 Pelvis
+True
+False
+
+c_spine_01.x
+Bip01 Spine
+False
+False
+
+c_spine_02.x
+Bip01 Spine1
+False
+False
+
+c_neck.x
+Bip01 Neck
+False
+False
+
+c_head.x
+Bip01 Head
+False
+False
+
+c_shoulder.l
+Bip01 L Clavicle
+False
+False
+
+c_arm_fk.l
+Bip01 L UpperArm
+False
+False
+
+c_forearm_fk.l
+Bip01 L Forearm
+False
+False
+
+c_hand_fk.l
+Bip01 L Hand
+False
+False
+
+c_thumb1.l
+Bip01 L Finger0
+False
+False
+
+c_thumb2.l
+Bip01 L Finger01
+False
+False
+
+c_thumb3.l
+Bip01 L Finger02
+False
+False
+
+c_index1.l
+Bip01 L Finger1
+False
+False
+
+c_index2.l
+Bip01 L Finger11
+False
+False
+
+c_index3.l
+Bip01 L Finger12
+False
+False
+
+c_middle1.l
+Bip01 L Finger2
+False
+False
+
+c_middle2.l
+Bip01 L Finger21
+False
+False
+
+c_middle3.l
+Bip01 L Finger22
+False
+False
+
+c_shoulder.r
+Bip01 R Clavicle
+False
+False
+
+c_arm_fk.r
+Bip01 R UpperArm
+False
+False
+
+c_forearm_fk.r
+Bip01 R Forearm
+False
+False
+
+c_hand_fk.r
+Bip01 R Hand
+False
+False
+
+c_thumb1.r
+Bip01 R Finger0
+False
+False
+
+c_thumb2.r
+Bip01 R Finger01
+False
+False
+
+c_thumb3.r
+Bip01 R Finger02
+False
+False
+
+c_index1.r
+Bip01 R Finger1
+False
+False
+
+c_index2.r
+Bip01 R Finger11
+False
+False
+
+c_index3.r
+Bip01 R Finger12
+False
+False
+
+c_middle1.r
+Bip01 R Finger2
+False
+False
+
+c_middle2.r
+Bip01 R Finger21
+False
+False
+
+c_middle3.r
+Bip01 R Finger22
+False
+False
+
+c_thigh_fk.l
+Bip01 L Thigh
+False
+False
+
+c_leg_fk.l
+Bip01 L Calf
+False
+False
+
+c_foot_fk.l
+Bip01 L Foot
+False
+False
+
+c_toes_fk.l
+Bip01 L Toe0
+False
+False
+
+c_thigh_fk.r
+Bip01 R Thigh
+False
+False
+
+c_leg_fk.r
+Bip01 R Calf
+False
+False
+
+c_foot_fk.r
+Bip01 R Foot
+False
+False
+
+c_toes_fk.r
+Bip01 R Toe0
+False
+False

@@ -1,0 +1,46 @@
+[3.71.25]
+
+New/improved:
+Rig: New 3 Bones Leg Type 2 setting (old default one is Type 1). This is a complete revised version of the 3 bones leg, with an IK rotation controller at the calf joint, and extra stretch controller for the upper thigh.
+Rig: "_bend" secondary controllers are now white color by default
+Rig: "Set Character Name" now also renames the cs_grp empty object
+Rig: Edit Ref Bones/Match to Rig now preserve the visibility of user-added collections
+Rig: Multiple Spine limbs are now supported
+Rig: Kilt limbs support in "Apply Pose as Rest Pose"
+Rig: Facial: New "Linear Y" and "Linear Z" settings in Limb Options, to better define for each axis the shape of the lips when moving the corner controller (was a single value driving all axes before). Plus, to fine-tweak the result, individual custom properties located on the lips reference bones can be adjusted: "linear_Y" and "linear_Z".
+Rig: Facial: The "Linear (Corners)" and "Linear (Jaw)" parameters in Limb Options now support negative values, allowing even more curved interpolation
+Rig: Facial: New "Soft" setting for eyebrows. This allows to deform smoothly the eybrows when moving the c_eyebrow_full "controller".
+Rig: Facial: New "Masters" setting for eyebrows. This adds 2 master controllers at the root and tip of the eyebrow, to adjust the global shape of the eyebrow quickly
+Rig: UI: Since the facial Limb Options panel was getting over-populated, it has been redesigned with tabs to display Eyes, Mouth, and Others settings only.
+Rig: New "IK Pole Height" setting for 3 Bones Legs. Setting it to 0.0 allows backward-compat. with older versions
+Rig: Facial: New eyelid masters in option (Limb options). Useful to tweak numerous eyelid bones at once. Complies with the Blink Pose and export tools.
+Skin: Shape Keys can now be evaluated in their current state when binding
+Remap: New Heat preset
+Export: New actions are now exportable by default
+Export: "Custom Export Scripts" can now be embedded in the Blender file (text editor)
+Export: Vertex Colors: New "Prioritze Active Color" setting
+Export: New "Ignore Linked Actions" setting to prevent linked actions from exporting
+Export: When shape keys cannot be baked because of a modifier altering the vertex count, a message now reports it after exporting
+Preferences: The default paths of custom Armatures, Limbs, Rig Layers... are now set to User/Documents/AutoRigPro
+Picker: Major speed improvement when selecting a picker bone. There was overhead in the bone selection/ armature collection management, it has been refactored. Selecting a bone from the picker is now almost instant, while it could take up to one second before.
+Picker: Multiple eyelid bones and eyelid masters are now supported in the picker panel
+Picker: Multiple lip bones and lip masters are now supported in the picker panel
+
+Fixed:
+Rig: "Apply Pose as Rest Pose" was missing support for Bendy-Bones limbs
+Rig: Missing toes activation in Limb Options when adding a leg limb
+Rig: Missing constraints removal when unsetting "Spine Master Controller"
+Rig: Error when disabling eyebrows
+Rig: Facial: Error with soft-lips "Visual Only"
+Rig: 3 Bones Leg Type 2 returning layer error in Blender pre 4x versions
+Rig Tools: Invalid 3 Bones Leg Type 1 FK to IK baking
+Rig Tools: Invalid 3 Bones Leg Type 1 IK to FK baking
+Smart: Error when a 2-spine bones armature was already existing in the scene
+Export: The spine bones amount was not evaluated properly when exporting as a humanoid, since the spine limb is now a duplicable limb
+Export: UE: The "joints fans" were preventing to export a valid hierarchy when enabling Mannequin Axes
+Export: Error when exporting spine limbs in Universal mode
+Export: The dummy mesh could not export anymore, the view_layer update needed to be triggered manually
+Export: Linked actions were localized accidentally in the file
+Export: Spine bone error when exporting as a Humanoid, and missing spine animation/constraints when exporting as Universal
+Export: "Prioritze Active Color" were not compatible with Blender versions pre 4.1
+Skin: Smooth Twist Weights was not working with pre-3.6 Blender versions
