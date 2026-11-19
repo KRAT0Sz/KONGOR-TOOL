@@ -7,6 +7,23 @@ Zero N-Panel and zero Viewport clutter.
 import bpy
 from .operators import get_target_armatures
 
+class KONGOR_MT_rigging_menu(bpy.types.Menu):
+    """Rig Creator & K2 Rigging Tools Menu"""
+    bl_label = "K2 Rig Creator"
+    bl_idname = "KONGOR_MT_rigging_menu"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("kongor.add_k2_rig", text="Add K2 Game Human Rig", icon="OUTLINER_OB_ARMATURE")
+        layout.separator()
+        layout.operator("kongor.remap_to_k2", text="Remap Bones to K2 Standard (Bip01)", icon="SYNTAX_ON").reverse = False
+        layout.operator("kongor.remap_to_k2", text="Remap Bones to Rig Creator (def_)", icon="SYNTAX_OFF").reverse = True
+        layout.operator("kongor.setup_k2_deform", text="Prepare Rig for K2 Export", icon="CHECKMARK")
+        layout.separator()
+        layout.operator("kongor.fit_bone_size", text="Auto-Fit Bone Sizes", icon="ARROW_LEFTRIGHT")
+        layout.separator()
+        layout.menu("rgc.add_armature", text="All Rig Creator Presets...", icon="FILE_BLEND")
+
 class KONGOR_MT_main_menu(bpy.types.Menu):
     """Top header dropdown menu in 3D Viewport"""
     bl_label = "KONGOR Tool"
@@ -22,6 +39,8 @@ class KONGOR_MT_main_menu(bpy.types.Menu):
         layout.operator("kongor.import_clip", text="Import K2 Clip (.clip)", icon="ANIM")
         layout.operator("kongor.export_clip", text="Export K2 Clip (.clip)", icon="RENDER_ANIMATION")
         layout.separator()
+        layout.menu("KONGOR_MT_rigging_menu", text="K2 Rig Creator Tools", icon="ARMATURE_DATA")
+        layout.separator()
         layout.operator("kongor.toggle_bones", text="Toggle Bones (Show/Hide)", icon="BONE_DATA")
         layout.operator("kongor.toggle_bone_names", text="Toggle Bone Names", icon="SYNTAX_ON")
         layout.operator("kongor.toggle_bone_xray", text="Toggle Bones In Front (X-Ray)", icon="XRAY")
@@ -29,7 +48,7 @@ class KONGOR_MT_main_menu(bpy.types.Menu):
         layout.separator()
         layout.operator("kongor.inspect_scene", text="Inspect Scene Objects", icon="INFO")
         layout.separator()
-        layout.operator("kongor.uninstall", text="Uninstall Extension...", icon="TRASH")
+        layout.operator("kongor.uninstall", text="Manage Extension...", icon="PREFERENCES")
 
 def draw_viewport_header_menu(self, context):
     layout = self.layout
@@ -54,6 +73,7 @@ def menu_func_export(self, context):
     self.layout.operator("kongor.export_clip", text="Heroes of Newerth Clip (.clip)")
 
 classes = (
+    KONGOR_MT_rigging_menu,
     KONGOR_MT_main_menu,
 )
 

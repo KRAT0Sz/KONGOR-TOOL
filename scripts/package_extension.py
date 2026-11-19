@@ -46,6 +46,19 @@ def build_package():
     for py_file in blender_dir.glob("*.py"):
         files_to_pack.append((py_file, f"blender/{py_file.name}"))
 
+    # 5. Integrated Rig Creator module and assets
+    rigcreator_dir = src_dir / "rigcreator"
+    if rigcreator_dir.exists():
+        for f in rigcreator_dir.rglob("*"):
+            if f.is_file():
+                rel = f.relative_to(src_dir)
+                # Skip caches, vscode configs, and screenshots
+                if any(part in ("__pycache__", ".vscode", "screenshots") for part in rel.parts):
+                    continue
+                if f.suffix in (".pyc", ".pyo"):
+                    continue
+                files_to_pack.append((f, str(rel).replace("\\", "/")))
+
     print(f"Packaging {len(files_to_pack)} files into {output_zip.name}...")
     with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for disk_path, arcname in sorted(files_to_pack, key=lambda x: x[1]):

@@ -84,3 +84,25 @@ def test_bounding_box():
     bb.add_point((3.0, -4.0, 10.0))
     assert bb.bmin == (-2.0, -4.0, 1.0)
     assert bb.bmax == (3.0, 5.0, 10.0)
+
+def test_rxgb_normal_swizzle_roundtrip():
+    from src.core.math_k2 import swizzle_rgb_to_rxgb, swizzle_rxgb_to_rgb
+    
+    # Standard normal vector pointing towards camera with light tilt:
+    # R=180 (X > 0), G=100 (Y < 0), B=240 (Z > 0)
+    orig_r, orig_g, orig_b = 180, 100, 240
+    
+    # Swizzle to K2 RXGB (DXT5nm layout)
+    # Target: Red=255, Green=100, Blue=240, Alpha=180
+    rxgb = swizzle_rgb_to_rxgb(orig_r, orig_g, orig_b)
+    assert rxgb == (255, 100, 240, 180)
+    assert rxgb[3] == orig_r  # Alpha carries Tangent X
+    assert rxgb[1] == orig_g  # Green carries Tangent Y
+    assert rxgb[2] == orig_b  # Blue carries Normal Z
+    
+    # Swizzle back from RXGB to standard RGB normal
+    decoded = swizzle_rxgb_to_rgb(rxgb[0], rxgb[1], rxgb[2], rxgb[3])
+    assert decoded[0] == orig_r
+    assert decoded[1] == orig_g
+    assert decoded[2] == orig_b
+    assert decoded[3] == 255

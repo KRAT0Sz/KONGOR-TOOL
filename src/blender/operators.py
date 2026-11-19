@@ -21,6 +21,16 @@ class KONGOR_OT_import_model(bpy.types.Operator, ImportHelper):
     filename_ext = ".model"
     filter_glob: StringProperty(default="*.model", options={"HIDDEN"})
 
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.kongor_export
+        box = layout.box()
+        box.label(text="Export Options", icon="EXPORT")
+        box.prop(settings, "apply_modifiers")
+        box.prop(settings, "export_deform_only")
+        box.prop(settings, "export_materials")
+        box.prop(settings, "export_mdf")
+
     def execute(self, context):
         settings = context.scene.kongor_import
         try:
@@ -45,6 +55,16 @@ class KONGOR_OT_export_model(bpy.types.Operator, ExportHelper):
 
     filename_ext = ".model"
     filter_glob: StringProperty(default="*.model", options={"HIDDEN"})
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.kongor_export
+        box = layout.box()
+        box.label(text="Export Options", icon="EXPORT")
+        box.prop(settings, "apply_modifiers")
+        box.prop(settings, "export_deform_only")
+        box.prop(settings, "export_materials")
+        box.prop(settings, "export_mdf")
 
     def execute(self, context):
         settings = context.scene.kongor_export
@@ -343,10 +363,21 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         col.prop(settings_exp, "apply_modifiers")
         col.prop(settings_exp, "export_materials")
         col.prop(settings_exp, "export_mdf")
+        col.prop(settings_exp, "export_deform_only")
 
-        # 3. Skeleton & Bones Section
+        # 3. K2 Rig Creator & Skeleton Section
+        rig_k2_box = layout.box()
+        rig_k2_box.label(text="K2 Rig Creator & Rigging:", icon="ARMATURE_DATA")
+        row_k2 = rig_k2_box.row(align=True)
+        row_k2.operator("kongor.add_k2_rig", text="Add K2 Game Rig", icon="OUTLINER_OB_ARMATURE")
+        row_k2.operator("kongor.setup_k2_deform", text="Prepare for K2", icon="CHECKMARK")
+        row_remap = rig_k2_box.row(align=True)
+        row_remap.operator("kongor.remap_to_k2", text="Remap to K2 (Bip01)", icon="SYNTAX_ON").reverse = False
+        row_remap.operator("kongor.remap_to_k2", text="To Rig Creator (def_)", icon="SYNTAX_OFF").reverse = True
+
+        # 4. Skeleton & Bones Display Section
         rig_box = layout.box()
-        rig_box.label(text="Skeleton & Bones Display:", icon="ARMATURE_DATA")
+        rig_box.label(text="Skeleton & Bones Display:", icon="BONE_DATA")
         target_arms = get_target_armatures(context)
 
         bones_vis = any(not a.hide_get() and not a.hide_viewport for a in target_arms) if target_arms else False
@@ -370,7 +401,7 @@ class KONGOR_OT_dialog(bpy.types.Operator):
             col.prop(arm_obj.data, "show_axes", text="Show Bone Axes")
             col.prop(arm_obj.data, "display_type", text="Display Type")
 
-        # 4. Animation Clip Section
+        # 5. Animation Clip Section
         clip_box = layout.box()
         clip_box.label(text="K2 Animation Clip (.clip / CLIP v2):", icon="ANIM")
         row = clip_box.row(align=True)
@@ -383,6 +414,7 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         row.prop(settings_clip, "frame_start")
         row.prop(settings_clip, "frame_end")
         col.prop(settings_clip, "fps")
+        col.prop(settings_clip, "export_deform_only")
 
         # 4. Active Mesh Object Properties
         if context.active_object and context.active_object.type == "MESH":
@@ -393,88 +425,239 @@ class KONGOR_OT_dialog(bpy.types.Operator):
             if not settings_obj.is_collision_surface:
                 obj_box.prop(settings_obj, "bonelink")
 
-        # 5. Maintenance / Uninstall
+        # 5. Extension Management
         maint_box = layout.box()
-        maint_box.label(text="Maintenance:", icon="PREFERENCES")
+        maint_box.label(text="Extension:", icon="PREFERENCES")
         row = maint_box.row()
-        row.alert = True
-        row.operator("kongor.uninstall", text="Uninstall Extension", icon="TRASH")
+        row.operator("kongor.uninstall", text="Manage Extension in Preferences", icon="PREFERENCES")
 
 class KONGOR_OT_uninstall(bpy.types.Operator):
-    """Uninstall KONGOR TOOL extension and remove files from Blender"""
+    """Safely open Blender Preferences to manage or uninstall KONGOR TOOL"""
     bl_idname = "kongor.uninstall"
-    bl_label = "Uninstall KONGOR TOOL"
+    bl_label = "Manage / Uninstall KONGOR TOOL"
     bl_options = {"REGISTER", "INTERNAL"}
 
-    def invoke(self, context, event):
-        return context.window_manager.invoke_confirm(self, event)
+    def execute(self, context):
+        try:
+            bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
+            if hasattr(context.preferences, "active_section"):
+                context.preferences.active_section = "EXTENSIONS"
+        except Exception:
+            pass
+        self.report({"INFO"}, "Preferences opened: Manage or uninstall KONGOR TOOL from Extensions.")
+        return {"FINISHED"}
+
+# ---------------------------------------------------------------------------
+# K2 & Rig Creator Bone Mapping & Integration
+# ---------------------------------------------------------------------------
+
+RGC_TO_K2_BONE_MAP = {
+    # Torso / Spine
+    "root_rotation": "Root",
+    "def_spine.001": "Bip01 Pelvis",
+    "def_spine.002": "Bip01 Spine",
+    "def_spine.003": "Bip01 Spine1",
+    "def_spine.004": "Bip01 Spine2",
+    "def_head.001": "Bip01 Neck",
+    "def_head.002": "Bip01 Head",
+
+    # Left Arm
+    "def_shoulder_L.001": "Bip01 L Clavicle",
+    "def_shoulder_L.002": "Bip01 L Clavicle1",
+    "def_arm_UP_L.001": "Bip01 L UpperArm",
+    "def_arm_UP_L.002": "Bip01 L UpperArmRoll",
+    "def_arm_DOWN_L.001": "Bip01 L Forearm",
+    "def_arm_DOWN_L.002": "Bip01 L ForearmRoll",
+    "def_hand_L": "Bip01 L Hand",
+
+    # Right Arm
+    "def_shoulder_R.001": "Bip01 R Clavicle",
+    "def_shoulder_R.002": "Bip01 R Clavicle1",
+    "def_arm_UP_R.001": "Bip01 R UpperArm",
+    "def_arm_UP_R.002": "Bip01 R UpperArmRoll",
+    "def_arm_DOWN_R.001": "Bip01 R Forearm",
+    "def_arm_DOWN_R.002": "Bip01 R ForearmRoll",
+    "def_hand_R": "Bip01 R Hand",
+
+    # Left Leg
+    "def_hip_L.001": "Bip01 L Thigh",
+    "def_hip_L.002": "Bip01 L ThighRoll",
+    "def_leg_L.001": "Bip01 L Calf",
+    "def_leg_L.002": "Bip01 L CalfRoll",
+    "def_feet_L.001": "Bip01 L Foot",
+    "def_feet_L.002": "Bip01 L Toe0",
+
+    # Right Leg
+    "def_hip_R.001": "Bip01 R Thigh",
+    "def_hip_R.002": "Bip01 R ThighRoll",
+    "def_leg_R.001": "Bip01 R Calf",
+    "def_leg_R.002": "Bip01 R CalfRoll",
+    "def_feet_R.001": "Bip01 R Foot",
+    "def_feet_R.002": "Bip01 R Toe0",
+
+    # Left Fingers
+    "def_thumb_L.001": "Bip01 L Finger0",
+    "def_thumb_L.002": "Bip01 L Finger01",
+    "def_thumb_L.003": "Bip01 L Finger02",
+    "def_index_L.001": "Bip01 L Finger1",
+    "def_index_L.002": "Bip01 L Finger11",
+    "def_index_L.003": "Bip01 L Finger12",
+    "def_middle_L.001": "Bip01 L Finger2",
+    "def_middle_L.002": "Bip01 L Finger21",
+    "def_middle_L.003": "Bip01 L Finger22",
+    "def_ring_L.001": "Bip01 L Finger3",
+    "def_ring_L.002": "Bip01 L Finger31",
+    "def_ring_L.003": "Bip01 L Finger32",
+    "def_pinky_L.001": "Bip01 L Finger4",
+    "def_pinky_L.002": "Bip01 L Finger41",
+    "def_pinky_L.003": "Bip01 L Finger42",
+
+    # Right Fingers
+    "def_thumb_R.001": "Bip01 R Finger0",
+    "def_thumb_R.002": "Bip01 R Finger01",
+    "def_thumb_R.003": "Bip01 R Finger02",
+    "def_index_R.001": "Bip01 R Finger1",
+    "def_index_R.002": "Bip01 R Finger11",
+    "def_index_R.003": "Bip01 R Finger12",
+    "def_middle_R.001": "Bip01 R Finger2",
+    "def_middle_R.002": "Bip01 R Finger21",
+    "def_middle_R.003": "Bip01 R Finger22",
+    "def_ring_R.001": "Bip01 R Finger3",
+    "def_ring_R.002": "Bip01 R Finger31",
+    "def_ring_R.003": "Bip01 R Finger32",
+    "def_pinky_R.001": "Bip01 R Finger4",
+    "def_pinky_R.002": "Bip01 R Finger41",
+    "def_pinky_R.003": "Bip01 R Finger42",
+}
+
+class KONGOR_OT_remap_to_k2(bpy.types.Operator):
+    """Remap Rig Creator deform bones to standard K2 Engine (Bip01) names or reverse"""
+    bl_idname = "kongor.remap_to_k2"
+    bl_label = "Remap Bones to K2 Standard"
+    bl_options = {"REGISTER", "UNDO"}
+
+    reverse: bpy.props.BoolProperty(
+        name="Reverse (K2 to Rig Creator)",
+        description="Convert K2 standard Bip01 names back to Rig Creator def_ names",
+        default=False,
+    )
 
     def execute(self, context):
-        import shutil
-        import pathlib
+        target_arms = get_target_armatures(context)
+        if not target_arms:
+            self.report({"WARNING"}, "No armature found in selection or scene.")
+            return {"CANCELLED"}
 
-        addon_dir = pathlib.Path(__file__).resolve().parent.parent
-        root_pkg = __package__.rsplit(".blender", 1)[0] if ".blender" in __package__ else __package__
-        pkg_id = "kongor_tool"
+        mapping = {v: k for k, v in RGC_TO_K2_BONE_MAP.items()} if self.reverse else RGC_TO_K2_BONE_MAP
+        renamed_count = 0
 
-        def deferred_uninstall():
-            uninstalled = False
+        for arm in target_arms:
+            for old_name, new_name in mapping.items():
+                b = arm.data.bones.get(old_name)
+                if b:
+                    b.name = new_name
+                    renamed_count += 1
 
-            # 1. Blender 4.2+ Extension Uninstaller
-            if hasattr(bpy.ops, "extensions") and hasattr(bpy.ops.extensions, "package_uninstall"):
-                target_repo_dir = None
-                if hasattr(bpy.context.preferences, "extensions"):
-                    for repo in bpy.context.preferences.extensions.repos:
-                        try:
-                            if pathlib.Path(repo.directory).resolve() == addon_dir.parent.resolve() or repo.module == addon_dir.parent.name:
-                                target_repo_dir = repo.directory
-                                break
-                        except Exception:
-                            pass
+            # Also rename vertex groups on child / skinned meshes
+            for obj in bpy.data.objects:
+                if obj.type == "MESH" and (obj.parent == arm or any(m.type == "ARMATURE" and m.object == arm for m in obj.modifiers)):
+                    for old_name, new_name in mapping.items():
+                        vg = obj.vertex_groups.get(old_name)
+                        if vg:
+                            vg.name = new_name
 
-                if not target_repo_dir and hasattr(bpy.context.preferences, "extensions"):
-                    for repo in bpy.context.preferences.extensions.repos:
-                        if (pathlib.Path(repo.directory) / pkg_id).exists() or repo.module == "user_default":
-                            target_repo_dir = repo.directory
-                            break
+        direction = "Rig Creator -> K2 Bip01" if not self.reverse else "K2 Bip01 -> Rig Creator"
+        self.report({"INFO"}, f"Remapped {renamed_count} bones ({direction}).")
+        return {"FINISHED"}
 
-                if target_repo_dir:
-                    try:
-                        bpy.ops.extensions.package_uninstall(pkg_id=pkg_id, repo_directory=target_repo_dir)
-                        uninstalled = True
-                    except Exception:
-                        pass
+class KONGOR_OT_setup_k2_deform(bpy.types.Operator):
+    """Configure bone deform flags for K2 export (deform bones ON, controls/widgets OFF)"""
+    bl_idname = "kongor.setup_k2_deform"
+    bl_label = "Prepare Rig for K2 Export"
+    bl_options = {"REGISTER", "UNDO"}
 
-            # 2. Legacy Add-on Remove operator
-            if not uninstalled and hasattr(bpy.ops, "preferences") and hasattr(bpy.ops.preferences, "addon_remove"):
-                try:
-                    bpy.ops.preferences.addon_remove(module=root_pkg)
-                    uninstalled = True
-                except Exception:
-                    pass
+    def execute(self, context):
+        target_arms = get_target_armatures(context)
+        if not target_arms:
+            self.report({"WARNING"}, "No armature found in selection or scene.")
+            return {"CANCELLED"}
 
-            # 3. Direct disk cleanup fallback
-            if not uninstalled:
-                try:
-                    try:
-                        from . import unregister
-                        unregister()
-                    except Exception:
-                        pass
+        deform_count = 0
+        non_deform_count = 0
 
-                    if addon_dir.exists() and (addon_dir / "blender_manifest.toml").exists():
-                        shutil.rmtree(addon_dir, ignore_errors=True)
-                except Exception:
-                    pass
+        for arm in target_arms:
+            for b in arm.data.bones:
+                name_lower = b.name.lower()
+                is_control = any(name_lower.startswith(prefix) for prefix in ("ik_", "pole", "cont_", "root_", "widget", "mch_", "org_"))
+                is_deform_named = any(name_lower.startswith(prefix) for prefix in ("def_", "bip01", "bone_", "root")) and not is_control
 
-            return None
+                if is_control:
+                    b.use_deform = False
+                    non_deform_count += 1
+                elif is_deform_named:
+                    b.use_deform = True
+                    deform_count += 1
+                elif b.use_deform:
+                    deform_count += 1
+                else:
+                    non_deform_count += 1
 
-        self.report({"INFO"}, "Uninstalling KONGOR TOOL...")
-        if hasattr(bpy.app, "timers") and hasattr(bpy.app.timers, "register"):
-            bpy.app.timers.register(deferred_uninstall, first_interval=0.05)
-        else:
-            deferred_uninstall()
+        self.report({"INFO"}, f"Prepared for K2: {deform_count} deform bones, {non_deform_count} control bones.")
+        return {"FINISHED"}
 
+class KONGOR_OT_add_k2_rig(bpy.types.Operator):
+    """Add a game-ready Rig Creator Human armature configured for K2 Engine"""
+    bl_idname = "kongor.add_k2_rig"
+    bl_label = "Add K2 Game Human Rig"
+    bl_options = {"REGISTER", "UNDO"}
+
+    rig_type: bpy.props.EnumProperty(
+        name="Rig Type",
+        description="Type of K2-compatible armature to generate",
+        items=[
+            ("Human For Games", "Human For Games", "Full game-ready human rig with IK/FK controls and deform hierarchy"),
+            ("Human Flat Hierarchy", "Human Flat Hierarchy", "Flat hierarchy human rig optimized for game engines"),
+            ("Basic Human", "Basic Human", "Simplified human skeleton with basic controls"),
+        ],
+        default="Human For Games",
+    )
+
+    remap_names: bpy.props.BoolProperty(
+        name="Remap to K2 Bip01 Names",
+        description="Automatically rename deform bones to standard K2 / Heroes of Newerth Bip01 naming",
+        default=True,
+    )
+
+    def execute(self, context):
+        if not hasattr(bpy.ops, "rgc") or not hasattr(bpy.ops.rgc, "add_armature"):
+            self.report({"ERROR"}, "Rig Creator module is not loaded.")
+            return {"CANCELLED"}
+
+        before_objs = set(context.scene.objects)
+        try:
+            bpy.ops.rgc.add_armature(type=self.rig_type)
+        except Exception as e:
+            self.report({"ERROR"}, f"Failed to spawn Rig Creator armature: {e}")
+            return {"CANCELLED"}
+
+        new_objs = [o for o in context.scene.objects if o not in before_objs]
+        arm_obj = next((o for o in new_objs if o.type == "ARMATURE"), None)
+
+        if arm_obj:
+            context.view_layer.objects.active = arm_obj
+            arm_obj.select_set(True)
+
+            # Ensure deform flags are set
+            bpy.ops.kongor.setup_k2_deform()
+
+            # Remap names if requested
+            if self.remap_names:
+                bpy.ops.kongor.remap_to_k2(reverse=False)
+
+            self.report({"INFO"}, f"Successfully added K2 Rig: {arm_obj.name}")
+            return {"FINISHED"}
+
+        self.report({"INFO"}, "Rig added to scene.")
         return {"FINISHED"}
 
 classes = (
@@ -487,6 +670,9 @@ classes = (
     KONGOR_OT_toggle_bone_xray,
     KONGOR_OT_fit_bone_size,
     KONGOR_OT_inspect_scene,
+    KONGOR_OT_remap_to_k2,
+    KONGOR_OT_setup_k2_deform,
+    KONGOR_OT_add_k2_rig,
     KONGOR_OT_dialog,
     KONGOR_OT_uninstall,
 )

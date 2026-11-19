@@ -36,9 +36,83 @@ from ..core import (
     K2Material,
     K2MaterialPhase,
     K2Sampler,
+    K2SkinReference,
     K2ModelDefinition,
     K2AnimationDef,
 )
+
+def _is_character_mesh(obj: bpy.types.Object) -> bool:
+    """Returns True if object is a valid character geometry mesh (excludes widgets/helpers/surfaces)."""
+    if not obj or obj.type != "MESH" or obj.hide_get():
+        return False
+    if getattr(obj.kongor, "is_collision_surface", False):
+        return False
+    name_lower = obj.name.lower()
+    if name_lower.startswith(("_surf", "collision")):
+        return False
+    # Exclude bone helpers, widget shapes, and rig creator widgets
+    if obj.name.startswith(("_bone", "Materiales_RIG_CREATOR", "WGT-", "rig_widget", "cs_", "ctrl_")):
+        return False
+    # Exclude objects in helper/widget collections
+    for coll in obj.users_collection:
+        cname = coll.name.lower()
+        if any(w in cname for w in ("rig_creator", "widget", "wgt", "controls", "helpers")):
+            return False
+    return True
+
+def _is_collision_surface(obj: bpy.types.Object) -> bool:
+    """Returns True if object represents a K2 collision surface polyhedron."""
+    if not obj or obj.type != "MESH" or obj.hide_get():
+        return False
+    return (
+        getattr(obj.kongor, "is_collision_surface", False)
+        or "_surf" in obj.name.lower()
+        or "collision" in obj.name.lower()
+    )
+
+def _node_image_path(node) -> Optional[str]:
+    if not node or node.type != 'TEX_IMAGE' or not node.image:
+        return None
+    image_path = bpy.path.abspath(node.image.filepath_raw or node.image.filepath)
+    if not image_path:
+        return None
+    return image_path.replace("\\", "/")
+
+def _looks_like_tex_type(text: str, tex_type: str) -> bool:
+    text = (text or "").lower()
+    if tex_type == 'color':
+        return any(k in text for k in ('color', 'diff', 'diffuse', 'albedo', 'base'))
+    if tex_type == 'normal':
+        return any(k in text for k in ('normal', 'norm', 'nrm', 'bump'))
+    if tex_type == 'specular':
+        return any(k in text for k in ('spec', 'specular', 'spec_color'))
+    if tex_type == 'team':
+        return 'team' in text
+    if tex_type == 'lightmap':
+        return any(k in text for k in ('glow', 'lightmap', 'emissive', 'emis', 'self'))
+    return False
+
+def _resolve_material_textures(mat: Optional[bpy.types.Material], export_dir: str = "") -> Dict[str, str]:
+    textures: Dict[str, str] = {}
+    if not mat or not mat.use_nodes or not mat.node_tree:
+        return textures
+
+    for node in mat.node_tree.nodes:
+        if node.type != 'TEX_IMAGE':
+            continue
+        image_path = _node_image_path(node)
+        if not image_path:
+            continue
+        filename = os.path.basename(image_path).lower()
+        label = (node.label or node.name or "").lower()
+        search_text = f"{label} {filename}"
+        for tex_type in ('color', 'normal', 'specular', 'team', 'lightmap'):
+            if tex_type in textures:
+                continue
+            if _looks_like_tex_type(search_text, tex_type):
+                textures[tex_type] = os.path.basename(image_path)
+                break
+    return textures
 
 def export_k2_model_file(
     filepath: str,
@@ -69,14 +143,25 @@ def export_k2_model_file(
     bone_name_to_index: Dict[str, int] = {}
 
     if armature_obj:
-        arm_bones = armature_obj.data.bones
+        export_deform_only = getattr(settings, "export_deform_only", True) if settings else True
+        has_non_deform = any(not b.use_deform for b in armature_obj.data.bones)
+
+        if export_deform_only and has_non_deform:
+            arm_bones = [b for b in armature_obj.data.bones if b.use_deform]
+        else:
+            arm_bones = list(armature_obj.data.bones)
+
         for idx, b in enumerate(arm_bones):
             bone_name_to_index[b.name] = idx
 
         for idx, b in enumerate(arm_bones):
             parent_idx = -1
-            if b.parent and b.parent.name in bone_name_to_index:
-                parent_idx = bone_name_to_index[b.parent.name]
+            p = b.parent
+            while p:
+                if p.name in bone_name_to_index:
+                    parent_idx = bone_name_to_index[p.name]
+                    break
+                p = p.parent
 
             # In K2 Engine: base is bone world rest matrix (3x4), inv_base is its inverse
             m = b.matrix_local
@@ -103,80 +188,101 @@ def export_k2_model_file(
     k2_surfaces: List[K2Surface] = []
     overall_bbox = BoundingBox()
 
-    mesh_objects = [
-        obj for obj in context.scene.objects
-        if obj.type == "MESH" and not obj.hide_get()
-    ]
+    # Determine character meshes to export (prefer selected character meshes if any)
+    selected_char = [obj for obj in context.selected_objects if _is_character_mesh(obj)]
+    char_objects = selected_char if selected_char else [obj for obj in context.scene.objects if _is_character_mesh(obj)]
 
-    surf_counter = 0
+    # Determine collision surfaces (prefer selected surfaces if any)
+    selected_surfs = [obj for obj in context.selected_objects if _is_collision_surface(obj)]
+    surf_objects = selected_surfs if selected_surfs else [obj for obj in context.scene.objects if _is_collision_surface(obj)]
 
-    for obj in mesh_objects:
-        is_collision = (
-            getattr(obj.kongor, "is_collision_surface", False)
-            or "_surf" in obj.name.lower()
-            or "collision" in obj.name.lower()
-        )
+    # Collect materials in first-seen order from character meshes
+    unique_materials: List[bpy.types.Material] = []
+    material_to_stem: Dict[str, str] = {}
+    seen_mat_keys = set()
 
+    for obj in char_objects:
+        for slot in obj.material_slots:
+            mat = slot.material
+            if mat and mat.name_full not in seen_mat_keys:
+                seen_mat_keys.add(mat.name_full)
+                unique_materials.append(mat)
+
+    for idx, mat in enumerate(unique_materials):
+        mat_lower = mat.name.lower()
+        if mat_lower.startswith(("material", "mat")) or mat.name.startswith("Material"):
+            stem = "material" if idx == 0 else f"material{idx + 1}"
+        else:
+            stem = mat.name
+        material_to_stem[mat.name_full] = stem
+
+    # 2a. Export Collision Surfaces
+    for surf_idx, obj in enumerate(surf_objects):
         eval_obj = obj.evaluated_get(depsgraph) if apply_modifiers else obj
         temp_mesh = eval_obj.to_mesh()
 
-        # Ensure all polygons are triangles
         bm = bmesh.new()
         bm.from_mesh(temp_mesh)
         bmesh.ops.triangulate(bm, faces=bm.faces[:])
         bm.to_mesh(temp_mesh)
         bm.free()
 
-        # Handle Collision Polyhedra (BUG-03 Ground Truth)
-        if is_collision:
-            points = [tuple(v.co) for v in temp_mesh.vertices]
-            tris = [(p.vertices[0], p.vertices[1], p.vertices[2]) for p in temp_mesh.polygons]
+        points = [tuple(v.co) for v in temp_mesh.vertices]
+        tris = [(p.vertices[0], p.vertices[1], p.vertices[2]) for p in temp_mesh.polygons]
 
-            surf_bbox = BoundingBox()
-            for p in points:
-                surf_bbox.add_point(p)
-                overall_bbox.add_point(p)
+        surf_bbox = BoundingBox()
+        for p in points:
+            surf_bbox.add_point(p)
+            overall_bbox.add_point(p)
 
-            # Generate bounding planes: n . (p - p0) = 0 => n.p - d = 0 => d = n.p0
-            planes: List[K2Plane] = []
-            for poly in temp_mesh.polygons:
-                n = tuple(poly.normal)
-                p0 = temp_mesh.vertices[poly.vertices[0]].co
-                d = n[0] * p0[0] + n[1] * p0[1] + n[2] * p0[2]
-                planes.append(K2Plane(normal=n, dist=d))
+        planes: List[K2Plane] = []
+        for poly in temp_mesh.polygons:
+            n = tuple(poly.normal)
+            p0 = temp_mesh.vertices[poly.vertices[0]].co
+            d = n[0] * p0[0] + n[1] * p0[1] + n[2] * p0[2]
+            planes.append(K2Plane(normal=n, dist=d))
 
-            # Generate bounding edges
-            edges: List[K2Edge] = []
-            for e in temp_mesh.edges:
-                v0 = temp_mesh.vertices[e.vertices[0]].co
-                v1 = temp_mesh.vertices[e.vertices[1]].co
-                edge_dir = (v1 - v0).normalized() if (v1 - v0).length > 1e-6 else Vector((1.0, 0.0, 0.0))
-                edges.append(K2Edge(normal=tuple(edge_dir), point=tuple(v0)))
+        edges: List[K2Edge] = []
+        for e in temp_mesh.edges:
+            v0 = temp_mesh.vertices[e.vertices[0]].co
+            v1 = temp_mesh.vertices[e.vertices[1]].co
+            edge_dir = (v1 - v0).normalized() if (v1 - v0).length > 1e-6 else Vector((1.0, 0.0, 0.0))
+            edges.append(K2Edge(normal=tuple(edge_dir), point=tuple(v0)))
 
-            k2_surfaces.append(
-                K2Surface(
-                    surf_index=surf_counter,
-                    flags=0,
-                    bmin=surf_bbox.bmin,
-                    bmax=surf_bbox.bmax,
-                    planes=planes,
-                    points=points,
-                    edges=edges,
-                    tris=tris,
-                )
+        k2_surfaces.append(
+            K2Surface(
+                surf_index=surf_idx,
+                flags=0,
+                bmin=surf_bbox.bmin,
+                bmax=surf_bbox.bmax,
+                planes=planes,
+                points=points,
+                edges=edges,
+                tris=tris,
             )
-            surf_counter += 1
-            if apply_modifiers:
-                eval_obj.to_mesh_clear()
-            continue
+        )
+        if apply_modifiers:
+            eval_obj.to_mesh_clear()
 
-        # Handle Visual Geometry Mesh
+    # 2b. Export Character Geometry Meshes
+    for obj in char_objects:
+        eval_obj = obj.evaluated_get(depsgraph) if apply_modifiers else obj
+        temp_mesh = eval_obj.to_mesh()
+
+        bm = bmesh.new()
+        bm.from_mesh(temp_mesh)
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+        bm.to_mesh(temp_mesh)
+        bm.free()
+
         mesh_bbox = BoundingBox()
         raw_verts: List[VertexAttributes] = []
         raw_faces: List[Tuple[int, int, int]] = []
 
         uv_layer = temp_mesh.uv_layers.active.data if temp_mesh.uv_layers.active else None
-        col_layer = temp_mesh.color_attributes.active.data if temp_mesh.color_attributes.active else None
+        col_attr = temp_mesh.color_attributes.active if temp_mesh.color_attributes else None
+        col_domain = col_attr.domain if col_attr else None
+        col_layer = col_attr.data if col_attr else None
 
         loop_counter = 0
         for poly in temp_mesh.polygons:
@@ -191,21 +297,23 @@ def export_k2_model_file(
                 overall_bbox.add_point(pos)
 
                 uvs: List[Tuple[float, float]] = []
-                if uv_layer:
+                if uv_layer and loop_idx < len(uv_layer):
                     u, v_coord = uv_layer[loop_idx].uv
                     uvs.append((u, (1.0 - v_coord) if flip_v else v_coord))
 
                 colors: List[Tuple[int, int, int, int]] = []
                 if col_layer:
-                    c = col_layer[loop_idx].color
-                    colors.append((
-                        int(c[0] * 255),
-                        int(c[1] * 255),
-                        int(c[2] * 255),
-                        int(c[3] * 255) if len(c) > 3 else 255
-                    ))
+                    c_idx = loop_idx if col_domain == "CORNER" else v_idx
+                    if c_idx < len(col_layer):
+                        elem = col_layer[c_idx]
+                        c = getattr(elem, "color", None) or getattr(elem, "vector", (1.0, 1.0, 1.0, 1.0))
+                        colors.append((
+                            int(c[0] * 255),
+                            int(c[1] * 255),
+                            int(c[2] * 255),
+                            int(c[3] * 255) if len(c) > 3 else 255
+                        ))
 
-                # Extract bone weights
                 weights: List[Tuple[int, float]] = []
                 for g in v.groups:
                     if g.group < len(obj.vertex_groups):
@@ -213,7 +321,6 @@ def export_k2_model_file(
                         if vg_name in bone_name_to_index:
                             weights.append((bone_name_to_index[vg_name], g.weight))
 
-                # Normalize weights
                 total_w = sum(w[1] for w in weights)
                 if total_w > 0.0:
                     weights = [(w[0], w[1] / total_w) for w in weights]
@@ -235,13 +342,18 @@ def export_k2_model_file(
             if len(poly_loops) == 3:
                 raw_faces.append((poly_loops[0], poly_loops[1], poly_loops[2]))
 
-        # Apply C++ Ground Truth Vertex Seam Splitting (BUG-02 fix)
         unique_verts, clean_faces = split_and_remap_vertices(raw_verts, raw_faces)
 
-        # Shader Name
-        shader_name = f"/materials/{obj.name}.material"
-        if obj.data.materials and obj.data.materials[0]:
-            shader_name = f"/materials/{obj.data.materials[0].name}.material"
+        # Resolve S2-compliant shader_name (e.g. "material", "material2")
+        mat = obj.data.materials[0] if (obj.data.materials and obj.data.materials[0]) else None
+        if mat and mat.name_full in material_to_stem:
+            mat_stem = material_to_stem[mat.name_full]
+        elif mat:
+            mat_stem = mat.name
+        else:
+            mat_stem = "material"
+
+        shader_name = mat_stem
 
         rigid_link = getattr(obj.kongor, "bonelink", -1)
         has_skin_weights = bool(bones and any(v.weights for v in unique_verts))
@@ -298,32 +410,80 @@ def export_k2_model_file(
     with open(filepath, "wb") as f:
         write_smdl(f, model_data)
 
-    # 4. Optional XML Companions (.material and .mdf)
+    # 4. Optional S2Exporter Companion Files (.material and .mdf)
     if export_materials:
-        for mesh in k2_meshes:
-            mat_filename = os.path.join(model_dir, f"{mesh.name}.material")
-            mat = K2Material(
-                name=mesh.name,
-                phases=[
-                    K2MaterialPhase(
-                        name="color",
-                        lighting_spec="default",
-                        samplers=[
-                            K2Sampler(name="diffuse", texture_path=f"{mesh.name}_color.dds"),
-                            K2Sampler(name="normalmap", texture_path=f"{mesh.name}_norm.dds"),
-                        ]
-                    )
-                ]
+        exported_stems = set()
+        for mat in unique_materials:
+            stem = material_to_stem[mat.name_full]
+            if stem in exported_stems:
+                continue
+            exported_stems.add(stem)
+
+            resolved_tex = _resolve_material_textures(mat, model_dir)
+            idx_suffix = "" if stem == "material" else stem.replace("material", "")
+
+            def_diffuse = f"color{idx_suffix}.tga" if stem.startswith("material") else f"{stem}_color.tga"
+            def_normal = f"normal{idx_suffix}.tga" if stem.startswith("material") else f"{stem}_normal.tga"
+            def_specular = f"spec_color{idx_suffix}.tga" if stem.startswith("material") else f"{stem}_spec.tga"
+
+            k2_mat = K2Material(
+                name="",
+                vDiffuseColor="1.0000 1.0000 1.0000",
+                fSpecularLevel="1.0000",
+                fGlossiness="56",
+                fOpacity="1.0000",
+                fReflect="1.0000",
+                diffuse_texture=resolved_tex.get("color") or def_diffuse,
+                normal_texture=resolved_tex.get("normal") or def_normal,
+                specular_texture=resolved_tex.get("specular") or def_specular,
+                team_texture=resolved_tex.get("team") or "team.tga",
+                lightmap_texture=resolved_tex.get("lightmap") or "glow.tga",
             )
-            with open(mat_filename, "w", encoding="utf-8") as f:
-                f.write(write_material_xml(mat))
+
+            mat_filepath = os.path.join(model_dir, f"{stem}.material")
+            with open(mat_filepath, "w", encoding="utf-8") as f:
+                f.write(write_material_xml(k2_mat))
+
+        if not unique_materials and k2_meshes:
+            k2_mat = K2Material(
+                name="",
+                diffuse_texture="color.tga",
+                normal_texture="normal.tga",
+                specular_texture="spec_color.tga",
+                team_texture="team.tga",
+                lightmap_texture="glow.tga",
+            )
+            mat_filepath = os.path.join(model_dir, "material.material")
+            with open(mat_filepath, "w", encoding="utf-8") as f:
+                f.write(write_material_xml(k2_mat))
 
     if export_mdf:
+        skin_refs: List[K2SkinReference] = []
+        for mesh in k2_meshes:
+            mat_stem = mesh.shader_name or "material"
+            skin_refs.append(
+                K2SkinReference(
+                    mesh_name=mesh.name,
+                    material_path=f"{mat_stem}.material",
+                )
+            )
+
         mdf_filename = os.path.join(model_dir, f"{model_name}.mdf")
+        model_rel = f"{model_name}.model"
         mdf = K2ModelDefinition(
-            model_file=f"{model_name}.model",
+            model_file=model_rel,
+            model_name=f"{model_name}.model",
             default_skin="default",
-            anims=[K2AnimationDef(name="idle", clip_file=f"{model_name}_idle.clip", loop=True, fps=30.0)]
+            model_type="K2",
+            skin_refs=skin_refs,
+            anims=[
+                K2AnimationDef(
+                    name="idle",
+                    clip_file=f"clips/{model_name}_idle.clip",
+                    loop=True,
+                    fps=30.0,
+                )
+            ],
         )
         with open(mdf_filename, "w", encoding="utf-8") as f:
             f.write(write_mdf_xml(mdf))
@@ -344,9 +504,25 @@ def export_k2_clip_file(
     frame_end = getattr(settings, "frame_end", context.scene.frame_end) if settings else context.scene.frame_end
     num_frames = max(1, frame_end - frame_start + 1)
 
-    arm_bones = armature_obj.data.bones
+    export_deform_only = getattr(settings, "export_deform_only", True) if settings else True
+    has_non_deform = any(not b.use_deform for b in armature_obj.data.bones)
+
+    if export_deform_only and has_non_deform:
+        arm_bones = [b for b in armature_obj.data.bones if b.use_deform]
+    else:
+        arm_bones = list(armature_obj.data.bones)
+
     if not arm_bones:
         return False, "Armature contains no bones to animate."
+
+    # Precompute exported parent for each bone (bypassing non-deform control bones)
+    exported_names = {b.name for b in arm_bones}
+    bone_to_exported_parent: Dict[str, Optional[bpy.types.Bone]] = {}
+    for b in arm_bones:
+        p = b.parent
+        while p and p.name not in exported_names:
+            p = p.parent
+        bone_to_exported_parent[b.name] = p
 
     # Backup current frame
     orig_frame = context.scene.frame_current
@@ -365,9 +541,14 @@ def export_k2_clip_file(
                 if not pb:
                     continue
 
-                # Relative pose matrix to parent
-                if pb.parent:
-                    rel_mat = pb.parent.matrix.inverted() @ pb.matrix
+                # Relative pose matrix to exported parent (bakes evaluated IK, drivers, and constraints)
+                exp_parent = bone_to_exported_parent.get(b.name)
+                if exp_parent:
+                    pb_parent = armature_obj.pose.bones.get(exp_parent.name)
+                    if pb_parent:
+                        rel_mat = pb_parent.matrix.inverted() @ pb.matrix
+                    else:
+                        rel_mat = pb.matrix
                 else:
                     rel_mat = pb.matrix
 

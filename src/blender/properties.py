@@ -45,13 +45,18 @@ class KongorModelExportSettings(bpy.types.PropertyGroup):
         default=True,
     )
     export_materials: BoolProperty(
-        name="Generate .material XML",
+        name="Generate .material",
         description="Write companion K2 XML .material files for each exported mesh",
         default=True,
     )
     export_mdf: BoolProperty(
-        name="Generate .mdf XML",
+        name="Generate .mdf",
         description="Write companion K2 Model Definition File (.mdf)",
+        default=True,
+    )
+    export_deform_only: BoolProperty(
+        name="Export Deform Bones Only",
+        description="Export only deforming bones (skips IK controls, helpers, and widgets). Essential for Rig Creator and game rigs",
         default=True,
     )
 
@@ -71,6 +76,11 @@ class KongorClipSettings(bpy.types.PropertyGroup):
         description="Target framerate for animation playback",
         default=30,
         min=1,
+    )
+    export_deform_only: BoolProperty(
+        name="Export Deform Bones Only",
+        description="Export only deforming bones (skips IK controls). Bakes evaluated constraint motions into K2 clip channels",
+        default=True,
     )
 
 class KongorObjectSettings(bpy.types.PropertyGroup):
@@ -93,12 +103,10 @@ class KONGOR_AddonPreferences(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
         box = layout.box()
-        box.label(text="KONGOR TOOL (v5.0.0)", icon="TOOL_SETTINGS")
+        box.label(text="KONGOR TOOL v5.0.0", icon="TOOL_SETTINGS")
         box.label(text="Heroes of Newerth K2 Engine Model & Animation (.model / .clip) Tool")
         box.separator()
-        row = box.row()
-        row.alert = True
-        row.operator("kongor.uninstall", text="Uninstall KONGOR TOOL", icon="TRASH")
+        box.label(text="To update, disable, or uninstall, use the official Blender Extensions menu above.", icon="INFO")
 
 classes = (
     KongorModelImportSettings,
