@@ -127,3 +127,16 @@ def test_s2_mdf_skin_specification():
     assert parsed.skin_refs[2].mesh_name == "mat3"
     assert len(parsed.anims) == 1
 
+def test_foliage_material_double_sided_cull_none():
+    """Verifies that foliage and double-sided tree materials generate cull='CULL_NONE'."""
+    mat = K2Material(
+        name="leaves",
+        diffuse_texture="leaves_color.tga",
+        cull="CULL_NONE",
+    )
+    xml_str = write_material_xml(mat)
+    assert 'cull="CULL_NONE"' in xml_str
+    parsed = read_material_xml(xml_str)
+    assert parsed.cull == "CULL_NONE"
+
+

@@ -7,6 +7,7 @@ Clean Architecture without legacy baggage.
 import bpy
 from bpy.props import (
     BoolProperty,
+    EnumProperty,
     IntProperty,
     PointerProperty,
 )
@@ -34,6 +35,23 @@ class KongorModelImportSettings(bpy.types.PropertyGroup):
     )
 
 class KongorModelExportSettings(bpy.types.PropertyGroup):
+    prop_preset: EnumProperty(
+        name="Prop Preset",
+        description="Preset configuration for specific K2 asset types (matching S2Exporter)",
+        items=[
+            ("NONE", "None (Default / Unit)", "Standard character, unit, or general animated asset"),
+            ("ROCK", "Static Prop (Rock / Object)", "Force static geometry, standard opaque materials, ignores armatures"),
+            ("TREE", "Prop Tree", "Foliage alpha testing & double-sided, preserves trunk armature for death animation"),
+            ("FOLIAGE", "Prop Scenery / Foliage", "Force static walk-through vegetation, double-sided materials"),
+            ("BUILDING", "Building / Structure", "Force static geometry, supports collision surfaces and roofs"),
+        ],
+        default="NONE",
+    )
+    force_static: BoolProperty(
+        name="Force Static Mesh",
+        description="Force export all geometry as rigid static meshes (ignores bones/skinning, ideal for rocks, scenery, and static props)",
+        default=False,
+    )
     flip_v: BoolProperty(
         name="Flip UV (V-Axis)",
         description="Invert V texture coordinate (1.0 - V) for K2 Engine standard",
@@ -84,6 +102,17 @@ class KongorClipSettings(bpy.types.PropertyGroup):
     )
 
 class KongorObjectSettings(bpy.types.PropertyGroup):
+    mesh_type: EnumProperty(
+        name="Mesh Type",
+        description="Role of this mesh in K2 Engine (matches S2Exporter Mesh Info)",
+        items=[
+            ("NORMAL", "Normal Mesh", "Standard visual geometry rendered in game"),
+            ("SURF", "Collision Surface (_surf)", "Convex polyhedron collision shape for unit pathing/blocking"),
+            ("BONE", "Reference Bone (_bone)", "Socket or attachment point helper"),
+            ("ROOF", "Roof Mesh", "Structure roof mesh"),
+        ],
+        default="NORMAL",
+    )
     is_collision_surface: BoolProperty(
         name="Collision Surface",
         description="Export this mesh as a K2 'surf' collision convex polyhedron instead of a visual mesh",

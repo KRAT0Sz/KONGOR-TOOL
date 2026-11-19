@@ -23,13 +23,13 @@ class KONGOR_OT_import_model(bpy.types.Operator, ImportHelper):
 
     def draw(self, context):
         layout = self.layout
-        settings = context.scene.kongor_export
+        settings = context.scene.kongor_import
         box = layout.box()
-        box.label(text="Export Options", icon="EXPORT")
-        box.prop(settings, "apply_modifiers")
-        box.prop(settings, "export_deform_only")
-        box.prop(settings, "export_materials")
-        box.prop(settings, "export_mdf")
+        box.label(text="Import Options", icon="IMPORT")
+        box.prop(settings, "flip_v")
+        box.prop(settings, "build_materials")
+        box.prop(settings, "bones_in_front")
+        box.prop(settings, "show_bone_names")
 
     def execute(self, context):
         settings = context.scene.kongor_import
@@ -61,6 +61,8 @@ class KONGOR_OT_export_model(bpy.types.Operator, ExportHelper):
         settings = context.scene.kongor_export
         box = layout.box()
         box.label(text="Export Options", icon="EXPORT")
+        box.prop(settings, "prop_preset")
+        box.prop(settings, "force_static")
         box.prop(settings, "apply_modifiers")
         box.prop(settings, "export_deform_only")
         box.prop(settings, "export_materials")
@@ -357,13 +359,25 @@ class KONGOR_OT_dialog(bpy.types.Operator):
         settings_imp = context.scene.kongor_import
         settings_exp = context.scene.kongor_export
         col = model_box.column(align=True)
-        col.prop(settings_imp, "flip_v")
-        col.prop(settings_imp, "bones_in_front")
-        col.prop(settings_imp, "show_bone_names")
+        col.prop(settings_exp, "prop_preset")
+        col.prop(settings_exp, "force_static")
         col.prop(settings_exp, "apply_modifiers")
         col.prop(settings_exp, "export_materials")
         col.prop(settings_exp, "export_mdf")
         col.prop(settings_exp, "export_deform_only")
+        col.separator()
+        col.prop(settings_imp, "flip_v")
+        col.prop(settings_imp, "bones_in_front")
+        col.prop(settings_imp, "show_bone_names")
+
+        # Active Mesh Object Settings (matches S2Exporter Mesh Info)
+        act = context.active_object
+        if act and act.type == "MESH":
+            mesh_box = layout.box()
+            mesh_box.label(text=f"Selected Mesh: {act.name}", icon="MESH_DATA")
+            mesh_box.prop(act.kongor, "mesh_type")
+            if act.kongor.mesh_type == "NORMAL":
+                mesh_box.prop(act.kongor, "bonelink")
 
         # 3. K2 Rig Creator & Skeleton Section
         rig_k2_box = layout.box()

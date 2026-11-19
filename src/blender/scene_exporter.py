@@ -42,8 +42,10 @@ from ..core import (
 )
 
 def _is_character_mesh(obj: bpy.types.Object) -> bool:
-    """Returns True if object is a valid character geometry mesh (excludes widgets/helpers/surfaces)."""
+    """Returns True if object is a valid character/prop geometry mesh (excludes widgets/helpers/surfaces)."""
     if not obj or obj.type != "MESH" or obj.hide_get():
+        return False
+    if getattr(obj.kongor, "mesh_type", "NORMAL") in ("SURF", "BONE"):
         return False
     if getattr(obj.kongor, "is_collision_surface", False):
         return False
@@ -65,7 +67,8 @@ def _is_collision_surface(obj: bpy.types.Object) -> bool:
     if not obj or obj.type != "MESH" or obj.hide_get():
         return False
     return (
-        getattr(obj.kongor, "is_collision_surface", False)
+        getattr(obj.kongor, "mesh_type", "NORMAL") == "SURF"
+        or getattr(obj.kongor, "is_collision_surface", False)
         or "_surf" in obj.name.lower()
         or "collision" in obj.name.lower()
     )
@@ -128,16 +131,22 @@ def export_k2_model_file(
     apply_modifiers = getattr(settings, "apply_modifiers", True) if settings else True
     export_materials = getattr(settings, "export_materials", True) if settings else True
     export_mdf = getattr(settings, "export_mdf", True) if settings else True
+    force_static = getattr(settings, "force_static", False) if settings else False
+    prop_preset = getattr(settings, "prop_preset", "NONE") if settings else "NONE"
 
-    # 1. Locate Primary Armature
+    if prop_preset in ("ROCK", "FOLIAGE", "BUILDING"):
+        force_static = True
+
+    # 1. Locate Primary Armature (ignored if force_static is True)
     armature_obj = None
-    if context.active_object and context.active_object.type == "ARMATURE":
-        armature_obj = context.active_object
-    else:
-        for obj in context.scene.objects:
-            if obj.type == "ARMATURE" and not obj.hide_get():
-                armature_obj = obj
-                break
+    if not force_static:
+        if context.active_object and context.active_object.type == "ARMATURE":
+            armature_obj = context.active_object
+        else:
+            for obj in context.scene.objects:
+                if obj.type == "ARMATURE" and not obj.hide_get():
+                    armature_obj = obj
+                    break
 
     bones: List[K2Bone] = []
     bone_name_to_index: Dict[str, int] = {}
@@ -426,6 +435,11 @@ def export_k2_model_file(
             def_normal = f"normal{idx_suffix}.tga" if stem.startswith("material") else f"{stem}_normal.tga"
             def_specular = f"spec_color{idx_suffix}.tga" if stem.startswith("material") else f"{stem}_spec.tga"
 
+            mat_cull = "CULL_BACK"
+            mat_name_lower = mat.name.lower()
+            if prop_preset in ("TREE", "FOLIAGE") or any(kw in mat_name_lower for kw in ("leaf", "leaves", "foliage", "flora", "plant", "branch", "twig")):
+                mat_cull = "CULL_NONE"
+
             k2_mat = K2Material(
                 name="",
                 vDiffuseColor="1.0000 1.0000 1.0000",
@@ -433,6 +447,7 @@ def export_k2_model_file(
                 fGlossiness="56",
                 fOpacity="1.0000",
                 fReflect="1.0000",
+                cull=mat_cull,
                 diffuse_texture=resolved_tex.get("color") or def_diffuse,
                 normal_texture=resolved_tex.get("normal") or def_normal,
                 specular_texture=resolved_tex.get("specular") or def_specular,

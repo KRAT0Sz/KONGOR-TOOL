@@ -72,9 +72,33 @@ def menu_func_export(self, context):
     self.layout.operator("kongor.export_model", text="Heroes of Newerth Model (.model)")
     self.layout.operator("kongor.export_clip", text="Heroes of Newerth Clip (.clip)")
 
+class KONGOR_PT_object_panel(bpy.types.Panel):
+    """K2 Mesh Info & Object Settings (matches S2Exporter Mesh Info)"""
+    bl_label = "K2 Mesh Info"
+    bl_idname = "KONGOR_PT_object_panel"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'object'
+
+    @classmethod
+    def poll(cls, context):
+        return bool(context.object and context.object.type == "MESH")
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.object
+        box = layout.box()
+        box.label(text="K2 Object Settings", icon="OBJECT_DATA")
+        box.prop(obj.kongor, "mesh_type")
+        if obj.kongor.mesh_type == "NORMAL":
+            box.prop(obj.kongor, "bonelink")
+        elif obj.kongor.mesh_type == "SURF":
+            box.label(text="Exports as collision surface (_surf polyhedron)", icon="INFO")
+
 classes = (
     KONGOR_MT_rigging_menu,
     KONGOR_MT_main_menu,
+    KONGOR_PT_object_panel,
 )
 
 def register():
